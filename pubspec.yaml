@@ -1,0 +1,217 @@
+name: arena_team_app
+description: "Arena OS — employee-facing mobile app for Arena marketing agency."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.19.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # ─── UI ─────────────────────────────────────────────────────────
+  cupertino_icons: ^1.0.6
+  google_fonts: ^6.2.1
+  flutter_svg: ^2.0.10+1
+  cached_network_image: ^3.3.1
+  flutter_screenutil: ^5.9.3
+
+  # ─── State management (locked: Riverpod 2.x) ────────────────────
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # ─── Models / immutability ──────────────────────────────────────
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
+
+  # ─── Routing ────────────────────────────────────────────────────
+  go_router: ^14.2.0
+
+  # ─── Networking ─────────────────────────────────────────────────
+  dio: ^5.5.0+1
+  pretty_dio_logger: ^1.4.0
+  connectivity_plus: ^6.0.3
+
+  # ─── Realtime (Reverb via Pusher protocol) ─────────────────────
+  # Pure-Dart Pusher client that supports custom hosts (needed for self-hosted
+  # Reverb). Handles private channels + client events (typing indicator).
+  dart_pusher_channels: ^1.2.0
+
+  # ─── Storage ────────────────────────────────────────────────────
+  shared_preferences: ^2.2.3
+  # ≥10.x required so the web shim uses `js ^0.7.x`, matching pusher_channels_flutter.
+  flutter_secure_storage: ^10.0.0
+
+  # ─── Utilities ──────────────────────────────────────────────────
+  intl: ^0.20.2
+  equatable: ^2.0.5
+  url_launcher: ^6.3.0
+
+  # ─── Attachments (Phase 2.2.F) ─────────────────────────────────
+  image_picker: ^1.1.2
+  file_picker: ^8.3.7
+  permission_handler: ^11.3.1
+  path: ^1.9.0
+  # Client-side image compression before upload — a 20MB camera photo
+  # becomes ~1-2MB, so a 10-image task uploads in seconds, not minutes.
+  flutter_image_compress: ^2.3.0
+
+  # ─── Voice messages (Phase 2.2.G) ──────────────────────────────
+  # `record` ≥6 has consistent interface implementations across platforms
+  # (older 5.x had a startStream mismatch with record_linux).
+  record: ^6.0.0
+  audioplayers: ^6.4.0
+  path_provider: ^2.1.5
+
+  # ─── Video playback (chat videos) ──────────────────────────────
+  video_player: ^2.9.2
+  chewie: ^1.8.5
+
+  # ─── Calendar (Phase 3.D) ──────────────────────────────────────
+  table_calendar: ^3.1.2
+
+  # ─── Geolocation (Sprint E.2 — attendance) ─────────────────────
+  # Pure foreground location for now. Background streaming added in E.3
+  # via a separate package or platform-channel handler.
+  geolocator: ^13.0.1
+
+  # ─── Push notifications (Phase 3.J) ────────────────────────────
+  firebase_core: ^3.15.2
+  firebase_messaging: ^15.2.10
+  flutter_local_notifications: ^17.2.4
+
+  # ─── Sprint L — App update check ────────────────────────────────
+  # Reads the installed app version so we can compare against the
+  # server's "latest" and trigger the update bottom sheet.
+  package_info_plus: ^8.0.2
+
+  # ─── Sprint M — Global error handler + screenshot reporting ─────
+  # The `screenshot` package wraps the app tree in a RepaintBoundary
+  # so we can capture the visible frame to PNG and POST it to the
+  # backend along with the stack trace.
+  screenshot: ^3.0.0
+
+  # ─── Sprint #106 — Background location pings (Android only) ─────
+  # Runs a persistent foreground service so geolocator pings keep
+  # streaming to /attendance/pings while the app is backgrounded or
+  # the screen is off. iOS uses the existing foreground-only path.
+  flutter_background_service: ^5.0.10
+
+  # ─── Sprint Q — Share + authenticated download ──────────────────
+  # share_plus exposes the native share sheet (WhatsApp, Mail, etc).
+  # open_filex opens a downloaded file with the OS default handler
+  # (PDF reader, image viewer, etc) — used after we pull a binary
+  # via Dio with the Sanctum bearer token attached.
+  share_plus: ^10.1.4
+  open_filex: ^4.5.0
+  # device_info_plus & package_info_plus removed for Phase 1:
+  # their newest versions pull `jni` which forces NDK download
+  # (costs 30+ min on first build). Add back in Phase 2 with older versions:
+  #   device_info_plus: ^9.1.2     (pre-jni)
+  #   package_info_plus: ^5.0.1    (pre-jni)
+  # For now we use a hardcoded device name in login.
+
+  # ════════════════════════════════════════════════════════════════
+  # Phase 2 (Chat + realtime) — re-enable when starting Phase 2:
+  # ════════════════════════════════════════════════════════════════
+  # pusher_channels_flutter: ^2.2.1
+  # record: ^6.0.0
+  # audioplayers: ^6.0.0
+  # image_picker: ^1.1.2
+  # file_picker: ^8.0.6
+  # permission_handler: ^11.3.1
+  # drift: ^2.18.0
+  # sqlite3_flutter_libs: ^0.5.24
+  # path_provider: ^2.1.3
+  # path: ^1.9.0
+
+  # ════════════════════════════════════════════════════════════════
+  # Phase 4 (Push + share intent) — re-enable in Phase 4:
+  # NOTE: Firebase requires google-services.json + Firebase project
+  # ════════════════════════════════════════════════════════════════
+  # firebase_core: ^3.3.0
+  # firebase_messaging: ^15.0.5
+  # flutter_local_notifications: ^17.2.2
+  # receive_sharing_intent: ^1.8.0
+
+  http_parser: any
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+  # ─── Code generation ────────────────────────────────────────────
+  build_runner: ^2.4.11
+  riverpod_generator: ^2.6.3
+  custom_lint: ^0.7.3
+  riverpod_lint: ^2.6.4
+  freezed: ^2.5.7
+  json_serializable: ^6.8.0
+
+  # ─── Branding asset generators ─────────────────────────────────
+  flutter_launcher_icons: ^0.14.1
+  flutter_native_splash: ^2.4.1
+
+  # Phase 2:
+  # drift_dev: ^2.18.0
+
+# Pin analyzer_plugin into the analyzer-7.x window:
+#   - 0.12.x uses analyzer 6.x APIs (Element) → fails with analyzer 7.x
+#   - 0.13.0–0.13.7 use analyzer 7.x APIs (Element2) ✓ what we need
+#   - 0.13.8+ requires dart_style ^3.0.0 which conflicts with freezed 2.5.7
+#   - 0.14.x+ requires analyzer 10.x+ which conflicts with freezed 2.5.x
+dependency_overrides:
+  analyzer_plugin: ">=0.13.0 <0.13.8"
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/branding/
+
+  # Cairo font is loaded dynamically via google_fonts package —
+  # no need to bundle TTFs unless we want offline fallback.
+
+# ───────────────────────────────────────────────────────────────
+# App icon — regenerate after dropping a new 1024×1024 PNG into
+# assets/branding/app_icon.png:
+#   dart run flutter_launcher_icons
+# ───────────────────────────────────────────────────────────────
+flutter_launcher_icons:
+  android: true
+  # iOS turned off — the iOS project scaffold isn't present on this
+  # Windows workstation (no Xcode), and the AppIcon.appiconset path
+  # crashes the generator. Re-enable once an iOS project exists.
+  ios: false
+  image_path: "assets/branding/app_icon.png"
+  min_sdk_android: 24
+  # Adaptive icon: deep navy background matching the source PNG.
+  adaptive_icon_background: "#0A0F2C"
+  adaptive_icon_foreground: "assets/branding/app_icon.png"
+  web:
+    generate: true
+    image_path: "assets/branding/app_icon.png"
+    background_color: "#0A0F2C"
+    theme_color: "#2235FF"
+
+# ───────────────────────────────────────────────────────────────
+# Native splash — regenerate after dropping the splash bg PNG:
+#   dart run flutter_native_splash:create
+# ───────────────────────────────────────────────────────────────
+flutter_native_splash:
+  color: "#0A0F2C"
+  image: "assets/branding/app_icon.png"
+  background_image: "assets/branding/splash_bg.png"
+  android_12:
+    image: "assets/branding/app_icon.png"
+    color: "#0A0F2C"
+  android: true
+  # iOS off until an iOS project scaffold exists (no Xcode on Windows).
+  ios: false
+  web: true

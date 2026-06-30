@@ -1,0 +1,10 @@
+{
+  "_comment": "Sprint N — live build configuration. Pass to flutter via `--dart-define-from-file=live.json` so the APK targets the production Laravel server + Reverb. Keep all keys aligned with lib/core/config/env.dart.",
+
+  "API_BASE_URL": "https://erp.arenahere.com/api",
+  "REVERB_HOST": "erp.arenahere.com",
+  "REVERB_PORT": 443,
+  "REVERB_SCHEME": "wss",
+  "REVERB_APP_KEY": "ef15ebb76813e080d3d380475f7f4de586f9a9aab772c405",
+  "APP_ENV": "production"
+}

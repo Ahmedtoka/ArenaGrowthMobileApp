@@ -1,0 +1,10 @@
+{
+  "_comment": "Sprint N — local dev defaults. Already match env.dart's hardcoded defaults so you can run `flutter run` without flags. Override per-machine by copying this to local.local.json (gitignored) and bumping the URLs.",
+
+  "API_BASE_URL": "http://10.0.2.2:8000/api",
+  "REVERB_HOST": "10.0.2.2",
+  "REVERB_PORT": 8080,
+  "REVERB_SCHEME": "ws",
+  "REVERB_APP_KEY": "teamos-local-dev-key",
+  "APP_ENV": "development"
+}

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Allows cleartext HTTP traffic to local dev hosts only.
+  10.0.2.2  → Android emulator's alias for the host machine's loopback.
+  10.0.3.2  → Genymotion emulator's alias.
+  127.0.0.1 → device localhost.
+  192.168.* → typical LAN ranges for testing on a real device over WiFi.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <domain includeSubdomains="false">10.0.3.2</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+        <domain-suffix>.local</domain-suffix>
+    </domain-config>
+</network-security-config>
