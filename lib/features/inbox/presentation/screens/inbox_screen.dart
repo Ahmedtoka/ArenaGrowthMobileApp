@@ -3,274 +3,392 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/providers/app_providers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/text_direction_util.dart';
-import '../../data/models/inbox_item.dart';
-import '../controllers/inbox_providers.dart';
+import '../controllers/action_center_providers.dart';
 
-class InboxScreen extends ConsumerWidget {
+/// The notification center, rebuilt into four clean categories:
+///   @ Mentions on me · ❓ Clarifications I owe · ✅ My tasks done · 🔄 Task updates
+///
+/// The first three are ACTION-required (you must reply / review) — their status
+/// dot pulses until you open them. Task updates are informational.
+///
+/// Each row remembers, locally, whether you've opened it: opened rows dim and
+/// the per-section counter (unread only) drops — so a notification you've acted
+/// on stops shouting at you.
+class InboxScreen extends ConsumerStatefulWidget {
   const InboxScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final inboxAsync = ref.watch(inboxProvider);
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        backgroundColor: AppColors.appBg,
-        appBar: AppBar(
-          title: const Text('Inbox'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: () => ref.invalidate(inboxProvider),
-            ),
-          ],
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(48),
-            child: inboxAsync.when(
-              loading: () => const SizedBox(height: 48),
-              error: (_, __) => const SizedBox(height: 48),
-              data: (bundle) => TabBar(
-                indicatorColor: Colors.white,
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.white70,
-                labelPadding: const EdgeInsets.symmetric(horizontal: 4),
-                tabs: [
-                  _CountTab(
-                    label: 'Needs reply',
-                    count: bundle.redCount,
-                    color: AppColors.redBorder,
-                  ),
-                  _CountTab(
-                    label: 'Awaiting approval',
-                    count: bundle.orangeCount,
-                    color: AppColors.orangeBorder,
-                  ),
-                  _CountTab(
-                    label: 'Approved',
-                    count: bundle.greenCount,
-                    color: AppColors.greenBorder,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        body: inboxAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                  const SizedBox(height: 12),
-                  Text('Could not load inbox\n$e',
-                      textAlign: TextAlign.center,),
-                  const SizedBox(height: 12),
-                  FilledButton.icon(
-                    onPressed: () => ref.invalidate(inboxProvider),
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Retry'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          data: (b) => TabBarView(
-            children: [
-              _InboxList(items: b.red, emptyLabel: 'No messages need a reply'),
-              _InboxList(items: b.orange, emptyLabel: 'No replies awaiting approval'),
-              _InboxList(items: b.green, emptyLabel: 'No recently approved messages'),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  ConsumerState<InboxScreen> createState() => _InboxScreenState();
 }
 
-class _CountTab extends StatelessWidget {
-  final String label;
-  final int count;
-  final Color color;
-  const _CountTab({required this.label, required this.count, required this.color});
+class _InboxScreenState extends ConsumerState<InboxScreen> {
+  static const _prefsKey = 'inbox_read_keys';
+
+  /// Locally-remembered "I opened this" keys ("$category:$id").
+  Set<String> _read = {};
+
+  @override
+  void initState() {
+    super.initState();
+    // Load the per-item read set.
+    final prefs = ref.read(sharedPreferencesProvider);
+    _read = (prefs.getStringList(_prefsKey) ?? const []).toSet();
+
+    // Mark the whole inbox seen (clears the bell), then refresh the count.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await markActionCenterSeen(ref);
+      if (mounted) ref.invalidate(actionCenterProvider);
+    });
+  }
+
+  bool _isRead(String cat, ActionItem it) => _read.contains('$cat:${it.id}');
+
+  Future<void> _open(String cat, ActionItem it, VoidCallback nav) async {
+    final key = '$cat:${it.id}';
+    if (!_read.contains(key)) {
+      setState(() => _read = {..._read, key});
+      final prefs = ref.read(sharedPreferencesProvider);
+      await prefs.setStringList(_prefsKey, _read.toList());
+    }
+    nav();
+  }
+
+  int _unread(String cat, List<ActionItem> items) =>
+      items.where((it) => !_isRead(cat, it)).length;
 
   @override
   Widget build(BuildContext context) {
-    return Tab(
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    final async = ref.watch(actionCenterProvider);
+    return Scaffold(
+      backgroundColor: AppColors.appBg,
+      appBar: AppBar(
+        title: const Text('Notifications'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => ref.invalidate(actionCenterProvider),
           ),
-          const SizedBox(width: 4),
-          // Flexible + ellipsis so long labels (e.g. "Awaiting approval")
-          // never overflow the fixed-width tab.
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11.5),
-            ),
-          ),
-          if (count > 0) ...[
-            const SizedBox(width: 3),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '$count',
-                style: const TextStyle(
-                    fontSize: 10, color: Colors.white, fontWeight: FontWeight.w700,),
-              ),
-            ),
-          ],
         ],
       ),
+      body: async.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (_, __) => _Empty(
+          icon: Icons.wifi_off,
+          text: 'Couldn’t load your notifications.\nPull to retry.',
+          onRetry: () => ref.invalidate(actionCenterProvider),
+        ),
+        data: (b) {
+          final empty = b.mentions.isEmpty &&
+              b.clarifications.isEmpty &&
+              b.tasksDone.isEmpty &&
+              b.updates.isEmpty;
+          if (empty) {
+            return const _Empty(
+              icon: Icons.notifications_none,
+              text: 'You’re all caught up 🎉',
+            );
+          }
+          return RefreshIndicator(
+            onRefresh: () async => ref.invalidate(actionCenterProvider),
+            child: ListView(
+              padding: const EdgeInsets.only(bottom: 24),
+              children: [
+                _section(
+                  cat: 'mentions',
+                  title: '@ Mentions',
+                  color: const Color(0xFFEF4444),
+                  items: b.mentions,
+                  actionRequired: true,
+                  onTap: (it) {
+                    if (it.groupId != null) context.push('/chat/${it.groupId}');
+                  },
+                ),
+                _section(
+                  cat: 'clarifications',
+                  title: '❓ Clarifications you owe',
+                  color: const Color(0xFFF59E0B),
+                  items: b.clarifications,
+                  actionRequired: true,
+                  onTap: (it) => context.push('/tasks/${it.id}'),
+                ),
+                _section(
+                  cat: 'tasks_done',
+                  title: '✅ Tasks you assigned — done',
+                  color: const Color(0xFF16A34A),
+                  items: b.tasksDone,
+                  actionRequired: true,
+                  onTap: (it) => context.push('/tasks/${it.id}'),
+                ),
+                _section(
+                  cat: 'updates',
+                  title: '🔄 Task updates',
+                  color: const Color(0xFF2563EB),
+                  items: b.updates,
+                  actionRequired: false,
+                  onTap: (it) => context.push('/tasks/${it.id}'),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
-}
 
-class _InboxList extends StatelessWidget {
-  final List<InboxItem> items;
-  final String emptyLabel;
-  const _InboxList({required this.items, required this.emptyLabel});
-
-  @override
-  Widget build(BuildContext context) {
-    if (items.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+  Widget _section({
+    required String cat,
+    required String title,
+    required Color color,
+    required List<ActionItem> items,
+    required bool actionRequired,
+    required void Function(ActionItem) onTap,
+  }) {
+    if (items.isEmpty) return const SizedBox.shrink();
+    final unread = _unread(cat, items);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+          child: Row(
             children: [
-              const Icon(Icons.inbox_outlined, size: 56, color: Colors.grey),
-              const SizedBox(height: 12),
-              Text(emptyLabel,
-                  style: const TextStyle(color: AppColors.ink3),),
+              Text(title,
+                  style: TextStyle(
+                      fontSize: 13.5, fontWeight: FontWeight.w800, color: color)),
+              const SizedBox(width: 6),
+              // Badge shows UNREAD only, so it drops as you open items.
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                decoration: BoxDecoration(
+                    color: unread > 0
+                        ? color.withValues(alpha: 0.12)
+                        : AppColors.ink3.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10)),
+                child: Text(unread > 0 ? '$unread' : 'all seen',
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: unread > 0 ? color : AppColors.ink3)),
+              ),
             ],
           ),
         ),
-      );
-    }
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: items.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 4),
-      itemBuilder: (ctx, i) => _ItemRow(item: items[i]),
+        ...items.map((it) => _row(cat, it, color, actionRequired, onTap)),
+      ],
     );
   }
-}
 
-class _ItemRow extends StatelessWidget {
-  final InboxItem item;
-  const _ItemRow({required this.item});
+  Widget _row(String cat, ActionItem it, Color color, bool actionRequired,
+      void Function(ActionItem) onTap) {
+    final read = _isRead(cat, it);
+    // Read rows dim right down; action-required unread rows keep full contrast.
+    final opacity = read ? 0.55 : 1.0;
 
-  @override
-  Widget build(BuildContext context) {
-    final accent = switch (item.importanceStatus) {
-      'red' => AppColors.redBorder,
-      'orange' => AppColors.orangeBorder,
-      'green' => AppColors.greenBorder,
-      _ => AppColors.ink3,
-    };
-    final time = item.markedRedAt ??
-        item.markedOrangeAt ??
-        item.markedGreenAt ??
-        item.createdAt;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: () {
-          // Jump to the chat. Flash-highlight will need message anchor (TODO).
-          context.push('/chat/${item.groupId}');
-        },
-        child: Padding(
+    return InkWell(
+      onTap: () => _open(cat, it, () => onTap(it)),
+      child: Opacity(
+        opacity: opacity,
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
           padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: read ? const Color(0xFFF3F4F6) : Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border(
+                left: BorderSide(
+                    color: read ? AppColors.ink3 : color, width: 3)),
+          ),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 4,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: accent,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+              // ── Status indicator ──────────────────────────────────────
+              // Action-required + unread → pulsing dot ("do something").
+              // Read → static check. Informational unread → static dot.
+              _StatusDot(
+                color: color,
+                read: read,
+                pulse: actionRequired && !read,
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            item.brandName ?? item.groupName ?? 'Chat',
-                            style: const TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.ink,
-                            ),
-                          ),
-                        ),
-                        if (time != null)
-                          Text(
-                            DateFormat('d/M h:mm a').format(time.toLocal()),
-                            style: const TextStyle(
-                                fontSize: 11, color: AppColors.ink3,),
-                          ),
-                      ],
-                    ),
-                    if (item.sender?.name != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Text(
-                          item.sender!.name,
-                          style: const TextStyle(
-                              fontSize: 11.5,
-                              color: AppColors.ink3,
-                              fontWeight: FontWeight.w500,),
-                        ),
-                      ),
-                    if (item.bodyExcerpt != null &&
-                        item.bodyExcerpt!.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        item.bodyExcerpt!,
-                        textDirection: detectBidiDirection(item.bodyExcerpt),
+                    Text(it.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textDirection: detectBidiDirection(it.title),
+                        style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight:
+                                read ? FontWeight.w600 : FontWeight.w700,
+                            color: AppColors.ink)),
+                    const SizedBox(height: 2),
+                    Text(it.subtitle,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontSize: 13, color: AppColors.ink2, height: 1.3,),
+                        textDirection: detectBidiDirection(it.subtitle),
+                        style:
+                            const TextStyle(fontSize: 12, color: AppColors.ink3)),
+                    // "Action needed" tag — only while it still needs you.
+                    if (actionRequired && !read) ...[
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.bolt, size: 12, color: color),
+                            const SizedBox(width: 3),
+                            Text('Action needed',
+                                style: TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: color)),
+                          ],
+                        ),
                       ),
                     ],
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
+              if (it.at != null)
+                Text(DateFormat('MMM d').format(it.at!),
+                    style: const TextStyle(fontSize: 11, color: AppColors.ink3)),
+              const SizedBox(width: 4),
+              const Icon(Icons.chevron_right, size: 18, color: AppColors.ink3),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// A small status dot. When [pulse] is true it breathes (opacity + halo) to
+/// signal "this one needs action"; when [read] it collapses to a muted check.
+class _StatusDot extends StatefulWidget {
+  final Color color;
+  final bool read;
+  final bool pulse;
+  const _StatusDot({required this.color, required this.read, required this.pulse});
+
+  @override
+  State<_StatusDot> createState() => _StatusDotState();
+}
+
+class _StatusDotState extends State<_StatusDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.pulse) _c.repeat(reverse: true);
+  }
+
+  @override
+  void didUpdateWidget(covariant _StatusDot old) {
+    super.didUpdateWidget(old);
+    if (widget.pulse && !_c.isAnimating) {
+      _c.repeat(reverse: true);
+    } else if (!widget.pulse && _c.isAnimating) {
+      _c.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.read) {
+      return Icon(Icons.check_circle, size: 18, color: AppColors.ink3);
+    }
+    if (!widget.pulse) {
+      // Informational unread → static filled dot.
+      return Container(
+        width: 12,
+        height: 12,
+        decoration: BoxDecoration(color: widget.color, shape: BoxShape.circle),
+      );
+    }
+    // Action-required unread → pulsing dot with a soft halo.
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (_, __) {
+        final t = _c.value; // 0..1
+        return SizedBox(
+          width: 18,
+          height: 18,
+          child: Center(
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: 10 + 8 * t,
+                  height: 10 + 8 * t,
+                  decoration: BoxDecoration(
+                    color: widget.color.withValues(alpha: 0.25 * (1 - t)),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                Container(
+                  width: 11,
+                  height: 11,
+                  decoration: BoxDecoration(
+                    color: widget.color,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _Empty extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  final VoidCallback? onRetry;
+  const _Empty({required this.icon, required this.text, this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 46, color: AppColors.ink3),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(text,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.ink3, fontSize: 14)),
+          ),
+          if (onRetry != null) ...[
+            const SizedBox(height: 12),
+            OutlinedButton(onPressed: onRetry, child: const Text('Retry')),
+          ],
+        ],
       ),
     );
   }

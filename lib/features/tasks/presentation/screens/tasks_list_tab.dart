@@ -4,9 +4,14 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/utils/text_direction_util.dart';
+import '../../../../core/widgets/app_states.dart';
+import '../../../../core/widgets/status_pill.dart';
 import '../../../../core/widgets/user_avatar.dart';
+import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../data/models/task_model.dart';
+import '../../data/repositories/tasks_repository.dart';
 import '../controllers/tasks_providers.dart';
 
 class TasksListTab extends ConsumerWidget {
@@ -14,16 +19,12 @@ class TasksListTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scope = ref.watch(tasksScopeControllerProvider);
+    final tab = ref.watch(taskTabControllerProvider);
     final tasksAsync = ref.watch(tasksListProvider);
 
     return Column(
       children: [
-        _ScopeChips(
-          scope: scope,
-          onChange: (s) =>
-              ref.read(tasksScopeControllerProvider.notifier).set(s),
-        ),
+        const _TasksHeader(),
         Expanded(
           child: RefreshIndicator(
             onRefresh: () async => ref.invalidate(tasksListProvider),
@@ -33,12 +34,14 @@ class TasksListTab extends ConsumerWidget {
                 error: e,
                 onRetry: () => ref.invalidate(tasksListProvider),
               ),
-              data: (tasks) {
+              data: (result) {
+                final tasks = result.tasks;
                 if (tasks.isEmpty) {
-                  return _EmptyState(scope: scope);
+                  return _EmptyState(label: tab.label);
                 }
                 return ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
+                  // Extra bottom inset so the last card clears the two FABs.
+                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 88),
                   itemCount: tasks.length,
                   itemBuilder: (ctx, i) => _TaskCard(task: tasks[i]),
                 );
@@ -51,50 +54,365 @@ class TasksListTab extends ConsumerWidget {
   }
 }
 
-class _ScopeChips extends StatelessWidget {
-  final TasksScope scope;
-  final void Function(TasksScope) onChange;
+/// Two-row header: status tabs (with live open-count badges) + Add Task on
+/// top, date filters (and, for managers only, employee + brand filters) below.
+class _TasksHeader extends ConsumerWidget {
+  const _TasksHeader();
 
-  const _ScopeChips({required this.scope, required this.onChange});
+  int _badgeFor(TaskTab t, TaskCounts c) => switch (t) {
+        TaskTab.newTasks => c.newCount,
+        TaskTab.inProgress => c.inProgress,
+        TaskTab.waiting => c.waiting,
+        TaskTab.delivered => c.delivered,
+        TaskTab.done => c.done,
+        TaskTab.all => c.all,
+      };
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tab = ref.watch(taskTabControllerProvider);
+    final range = ref.watch(taskRangeControllerProvider);
+    final counts =
+        ref.watch(tasksListProvider).valueOrNull?.counts ?? const TaskCounts();
+    final user = ref.watch(authControllerProvider).valueOrNull;
+    final isManager = (user?.isOwner ?? false) || (user?.isAccountManager ?? false);
+    final assignee = ref.watch(taskFilterAssigneeProvider);
+    final brand = ref.watch(taskFilterBrandProvider);
+
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: AppColors.divider)),
       ),
-      height: 50,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: const EdgeInsets.only(top: 6, bottom: 6),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          for (final s in TasksScope.values)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: ChoiceChip(
-                label: Text(s.label),
-                selected: s == scope,
-                onSelected: (_) => onChange(s),
-                selectedColor: AppColors.arenaBlue,
-                showCheckmark: false,
-                labelStyle: TextStyle(
-                  color: s == scope ? Colors.white : AppColors.ink2,
-                  fontSize: 13,
-                  fontWeight:
-                      s == scope ? FontWeight.w600 : FontWeight.w500,
-                ),
-                backgroundColor: AppColors.appBg,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  side: BorderSide(
-                    color: s == scope
-                        ? AppColors.arenaBlue
-                        : Colors.transparent,
+          // ── Row 1: status tabs (full width; Add Task lives as a FAB) ───
+          SizedBox(
+            height: 38,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              children: [
+                for (final t in TaskTab.values)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 3),
+                    child: _TabChip(
+                      label: t.label,
+                      selected: t == tab,
+                      badge: _badgeFor(t, counts),
+                      onTap: () => ref
+                          .read(taskTabControllerProvider.notifier)
+                          .set(t),
+                    ),
                   ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          // ── Row 2: date filters (+ manager filters) ────────────────────
+          SizedBox(
+            height: 32,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              children: [
+                for (final r in TaskDateRange.values)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 3),
+                    child: _PillChip(
+                      icon: r == TaskDateRange.custom
+                          ? Icons.event
+                          : Icons.calendar_today,
+                      label: r == TaskDateRange.custom
+                          ? _customLabel(ref, range)
+                          : r.label,
+                      selected: r == range,
+                      onTap: () async {
+                        if (r == TaskDateRange.custom) {
+                          final picked = await showDateRangePicker(
+                            context: context,
+                            firstDate: DateTime(2023),
+                            lastDate: DateTime.now()
+                                .add(const Duration(days: 365)),
+                          );
+                          if (picked != null) {
+                            ref
+                                .read(taskCustomRangeControllerProvider.notifier)
+                                .set(from: picked.start, to: picked.end);
+                            ref
+                                .read(taskRangeControllerProvider.notifier)
+                                .set(TaskDateRange.custom);
+                          }
+                        } else {
+                          ref
+                              .read(taskRangeControllerProvider.notifier)
+                              .set(r);
+                        }
+                      },
+                    ),
+                  ),
+                if (isManager) ...[
+                  const _FilterDivider(),
+                  _PillChip(
+                    icon: Icons.person_outline,
+                    label: assignee == null ? 'Employee' : 'Employee ✓',
+                    selected: assignee != null,
+                    onTap: () => _pickEmployee(context, ref),
+                  ),
+                  const SizedBox(width: 6),
+                  _PillChip(
+                    icon: Icons.business_outlined,
+                    label: brand == null ? 'Brand' : 'Brand ✓',
+                    selected: brand != null,
+                    onTap: () => _pickBrand(context, ref),
+                  ),
+                  if (assignee != null || brand != null) ...[
+                    const SizedBox(width: 6),
+                    _PillChip(
+                      icon: Icons.clear,
+                      label: 'Clear',
+                      selected: false,
+                      onTap: () {
+                        ref
+                            .read(taskFilterAssigneeProvider.notifier)
+                            .set(null);
+                        ref.read(taskFilterBrandProvider.notifier).set(null);
+                      },
+                    ),
+                  ],
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _customLabel(WidgetRef ref, TaskDateRange range) {
+    if (range != TaskDateRange.custom) return 'Custom';
+    final w = ref.watch(taskCustomRangeControllerProvider);
+    if (w.from == null || w.to == null) return 'Custom';
+    String f(DateTime d) => '${d.day}/${d.month}';
+    return '${f(w.from!)} – ${f(w.to!)}';
+  }
+
+  Future<void> _pickEmployee(BuildContext context, WidgetRef ref) async {
+    final employees =
+        await ref.read(taskFilterEmployeesProvider.future).catchError(
+              (_) => <Map<String, dynamic>>[],
+            );
+    if (!context.mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => _PickerSheet(
+        title: 'Filter by employee',
+        items: [
+          const _PickItem(id: null, label: 'All employees'),
+          for (final e in employees)
+            _PickItem(
+              id: e['id'] as int?,
+              label: (e['name'] ?? e['full_name'] ?? 'User').toString(),
+            ),
+        ],
+        onPick: (id) =>
+            ref.read(taskFilterAssigneeProvider.notifier).set(id),
+      ),
+    );
+  }
+
+  Future<void> _pickBrand(BuildContext context, WidgetRef ref) async {
+    final brands = await ref.read(taskFilterBrandsProvider.future).catchError(
+          (_) => <Map<String, dynamic>>[],
+        );
+    if (!context.mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => _PickerSheet(
+        title: 'Filter by brand',
+        items: [
+          const _PickItem(id: null, label: 'All brands'),
+          for (final b in brands)
+            _PickItem(
+              id: b['id'] as int?,
+              label: (b['name'] ?? 'Brand').toString(),
+            ),
+        ],
+        onPick: (id) => ref.read(taskFilterBrandProvider.notifier).set(id),
+      ),
+    );
+  }
+}
+
+/// Status tab chip with an optional count badge.
+class _TabChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final int badge;
+  final VoidCallback onTap;
+  const _TabChip({
+    required this.label,
+    required this.selected,
+    required this.badge,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? AppColors.arenaBlue : AppColors.appBg,
+      borderRadius: AppRadius.rLg,
+      child: InkWell(
+        borderRadius: AppRadius.rLg,
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: selected ? Colors.white : AppColors.ink2,
+                  fontSize: 13,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),
+              if (badge > 0) ...[
+                const SizedBox(width: 5),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: selected ? Colors.white : AppColors.arenaBlue,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '$badge',
+                    style: TextStyle(
+                      color: selected ? AppColors.arenaBlue : Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Small icon + label pill used for date + manager filters.
+class _PillChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _PillChip({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = selected ? Colors.white : AppColors.ink2;
+    return Material(
+      color: selected ? AppColors.arenaBlue : AppColors.appBg,
+      borderRadius: AppRadius.rLg,
+      child: InkWell(
+        borderRadius: AppRadius.rLg,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 11),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: fg),
+              AppSpacing.hXs,
+              Text(label,
+                  style: TextStyle(
+                      color: fg,
+                      fontSize: 12.5,
+                      fontWeight:
+                          selected ? FontWeight.w700 : FontWeight.w500)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FilterDivider extends StatelessWidget {
+  const _FilterDivider();
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 1,
+        height: 18,
+        margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+        color: AppColors.divider,
+      );
+}
+
+class _PickItem {
+  final int? id;
+  final String label;
+  const _PickItem({required this.id, required this.label});
+}
+
+class _PickerSheet extends StatelessWidget {
+  final String title;
+  final List<_PickItem> items;
+  final void Function(int? id) onPick;
+  const _PickerSheet({
+    required this.title,
+    required this.items,
+    required this.onPick,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(title,
+                  style: const TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.w800)),
             ),
+          ),
+          Flexible(
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: items.length,
+              itemBuilder: (ctx, i) {
+                final it = items[i];
+                return ListTile(
+                  dense: true,
+                  title: Text(it.label,
+                      textDirection: detectBidiDirection(it.label)),
+                  onTap: () {
+                    onPick(it.id);
+                    Navigator.of(ctx).pop();
+                  },
+                );
+              },
+            ),
+          ),
         ],
       ),
     );
@@ -128,11 +446,11 @@ class _TaskCard extends StatelessWidget {
     final delivDone = hasDeliv && totD >= totQ;
 
     return Container(
-      margin: const EdgeInsets.only(top: 8),
+      margin: const EdgeInsets.only(top: AppSpacing.sm),
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadius.rMd,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -154,7 +472,7 @@ class _TaskCard extends StatelessWidget {
               Container(width: 4, color: brandColor),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: AppSpacing.card,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
@@ -167,7 +485,7 @@ class _TaskCard extends StatelessWidget {
                                 horizontal: 8, vertical: 3,),
                             decoration: BoxDecoration(
                               color: brandColor.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: AppRadius.rSm,
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -247,7 +565,7 @@ class _TaskCard extends StatelessWidget {
                                 child: LinearProgressIndicator(
                                   value: delivPct,
                                   minHeight: 5,
-                                  backgroundColor: const Color(0xFFE5E7EB),
+                                  backgroundColor: AppColors.border,
                                   valueColor: AlwaysStoppedAnimation(
                                       delivDone
                                           ? AppColors.greenBorder
@@ -255,7 +573,7 @@ class _TaskCard extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            AppSpacing.hSm,
                             Text('$totD/$totQ',
                                 style: TextStyle(
                                     fontSize: 11.5,
@@ -346,9 +664,9 @@ class _TaskCard extends StatelessWidget {
         TaskStatus.inProgress => const _StatusSpec(
             'In Progress', AppColors.arenaBlueLight, AppColors.arenaBlue,),
         TaskStatus.done => const _StatusSpec(
-            'Done', Color(0xFFD1FAE5), AppColors.greenBorder,),
+            'Done', AppColors.greenBg, AppColors.greenBorder,),
         TaskStatus.approved => const _StatusSpec(
-            'Approved', Color(0xFFD1FAE5), AppColors.greenBorder,),
+            'Approved', AppColors.greenBg, AppColors.greenBorder,),
         'received' => const _StatusSpec(
             'Received', Color(0xFFEDE9FE), Color(0xFF6D28D9),),
         TaskStatus.awaitingClarification => const _StatusSpec(
@@ -358,13 +676,13 @@ class _TaskCard extends StatelessWidget {
         TaskStatus.archived =>
           const _StatusSpec('Archived', Color(0xFFEEF2F7), AppColors.ink3),
         TaskStatus.cancelled =>
-          const _StatusSpec('Cancelled', Color(0xFFFEE2E2), AppColors.arenaRed),
+          const _StatusSpec('Cancelled', AppColors.redBg, AppColors.arenaRed),
         _ => _StatusSpec(s, const Color(0xFFEEF2F7), AppColors.ink2),
       };
 
   _PrioritySpec? _prioritySpec(String? p) => switch (p) {
         'urgent' => const _PrioritySpec('Urgent', AppColors.arenaRed),
-        'high' => const _PrioritySpec('High', Color(0xFFEA580C)),
+        'high' => const _PrioritySpec('High', AppColors.orangeBorder),
         'low' => const _PrioritySpec('Low', AppColors.ink3),
         _ => null,
       };
@@ -465,8 +783,8 @@ class _IconText extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  final TasksScope scope;
-  const _EmptyState({required this.scope});
+  final String label;
+  const _EmptyState({required this.label});
 
   @override
   Widget build(BuildContext context) => ListView(
@@ -480,7 +798,7 @@ class _EmptyState extends StatelessWidget {
                   const Icon(Icons.task_alt, size: 56, color: Colors.grey),
                   const SizedBox(height: 12),
                   Text(
-                    'No tasks in "${scope.label}"',
+                    'No tasks in "$label"',
                     style: const TextStyle(color: AppColors.ink3),
                   ),
                 ],

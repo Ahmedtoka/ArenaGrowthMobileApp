@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/providers/app_providers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/text_direction_util.dart';
+import '../../../../core/widgets/attendance_guard.dart';
 
 /// ─── السبحة — Social tally ────────────────────────────────────────────
 /// One tap = one published item (logged server-side with its exact time).
@@ -71,6 +72,8 @@ class _SocialTallyScreenState extends ConsumerState<SocialTallyScreen> {
   }
 
   Future<void> _tap(_BrandTally b, String kind, {bool undo = false}) async {
+    // Work-gate: logging social items only while checked-in + active.
+    if (!await ref.ensureCheckedIn(context)) return;
     final platform = _platform[b.id] ?? 'facebook';
     final key = '${b.id}.$platform.$kind';
     if (undo && _countFor(b, platform, kind) <= 0) return;

@@ -28,8 +28,11 @@ import '../../data/models/message_model.dart';
 /// On submit it creates ONE task per assignee via the tasks API, all linked
 /// to the source message so the chat shows the task card automatically.
 class CreateTaskFromMessageSheet extends ConsumerStatefulWidget {
-  final MessageModel sourceMessage;
-  final int groupId;
+  /// Null → standalone "Add Task" (opened from the Tasks page, not a chat).
+  final MessageModel? sourceMessage;
+
+  /// Null → standalone: the assignee pool is EVERY active employee, not a group.
+  final int? groupId;
   /// The current chat's brand (null when opened from a private/DM chat).
   final int? initialBrandId;
   /// True when opened inside a 1-on-1 DM — defaults the brand picker to
@@ -44,8 +47,8 @@ class CreateTaskFromMessageSheet extends ConsumerStatefulWidget {
 
   const CreateTaskFromMessageSheet({
     super.key,
-    required this.sourceMessage,
-    required this.groupId,
+    this.sourceMessage,
+    this.groupId,
     this.initialBrandId,
     this.isDirectChat = false,
     this.requireBrand = false,
@@ -54,8 +57,8 @@ class CreateTaskFromMessageSheet extends ConsumerStatefulWidget {
 
   static Future<bool?> show(
     BuildContext context, {
-    required MessageModel sourceMessage,
-    required int groupId,
+    MessageModel? sourceMessage,
+    int? groupId,
     int? initialBrandId,
     bool isDirectChat = false,
     bool requireBrand = false,
@@ -71,9 +74,10 @@ class CreateTaskFromMessageSheet extends ConsumerStatefulWidget {
       builder: (_) => CreateTaskFromMessageSheet(
         sourceMessage: sourceMessage,
         groupId: groupId,
+        // Standalone (no chat) → a brand/client is mandatory.
         initialBrandId: initialBrandId,
         isDirectChat: isDirectChat,
-        requireBrand: requireBrand,
+        requireBrand: requireBrand || (sourceMessage == null && !isDirectChat),
         initialAssigneeId: initialAssigneeId,
       ),
     );
@@ -286,7 +290,7 @@ class _CreateTaskFromMessageSheetState
   @override
   void initState() {
     super.initState();
-    final body = (widget.sourceMessage.body ?? '').trim();
+    final body = (widget.sourceMessage?.body ?? '').trim();
     // Sprint P.4 — strip every @mention before using the body as the
     // task title (the assignee picker captures who was mentioned, so we
     // don't want the title to repeat their handles).
@@ -317,11 +321,18 @@ class _CreateTaskFromMessageSheetState
     if (_selectedAssigneeIds.isNotEmpty) _loadFormConfig();
   }
 
+  /// Standalone Add Task = no source message AND no host group. It must show
+  /// ONLY the user's own brands (a manager can't assign onto a brand that isn't
+  /// theirs). Custom brainstorming rooms (requireBrand + a groupId) still load
+  /// every client.
+  bool get _isStandalone => widget.sourceMessage == null && widget.groupId == null;
+
   Future<void> _loadBrands() async {
     try {
       final repo = ref.read(tasksRepositoryProvider);
-      // Custom (brainstorming) rooms can target ANY client → load all brands.
-      final brands = await repo.listMyBrands(all: widget.requireBrand);
+      // Load ALL brands only for custom rooms; standalone + DM load MY brands.
+      final loadAll = widget.requireBrand && !_isStandalone;
+      final brands = await repo.listMyBrands(all: loadAll);
       // Hide the sentinel brands from the picker.
       final filtered = brands
           .where((b) =>
@@ -447,7 +458,10 @@ class _CreateTaskFromMessageSheetState
   Future<void> _loadMembers() async {
     try {
       final repo = ref.read(tasksRepositoryProvider);
-      final list = await repo.listGroupUsers(widget.groupId);
+      // Standalone (no group) → every active employee is assignable.
+      final list = widget.groupId != null
+          ? await repo.listGroupUsers(widget.groupId!)
+          : await repo.listUsers();
       if (!mounted) return;
       setState(() {
         _allMembers = list;
@@ -455,7 +469,7 @@ class _CreateTaskFromMessageSheetState
         _preselectMentions();
         // Now that we know who's in the group, re-clean the title using
         // EXACT member names (more accurate than the regex fallback).
-        final cleaned = _stripMentions(widget.sourceMessage.body ?? '').trim();
+        final cleaned = _stripMentions(widget.sourceMessage?.body ?? '').trim();
         _titleCtrl.text =
             cleaned.length > 80 ? cleaned.substring(0, 80) : cleaned;
       });
@@ -473,7 +487,7 @@ class _CreateTaskFromMessageSheetState
   /// up all the right people and never confuses "@Ahmed Gamal" with another
   /// "Ahmed" — the longest name still wins thanks to exact substring match.
   void _preselectMentions() {
-    final body = widget.sourceMessage.body ?? '';
+    final body = widget.sourceMessage?.body ?? '';
     if (body.isEmpty || _allMembers.isEmpty) return;
 
     final lowerBody = body.toLowerCase();
@@ -635,7 +649,7 @@ class _CreateTaskFromMessageSheetState
       for (final brandId in brandTargets) {
         await repo.createTasksFromMessage(
           brandId: brandId,
-          sourceMessageId: widget.sourceMessage.id,
+          sourceMessageId: widget.sourceMessage?.id,
           assigneeIds: _selectedAssigneeIds.toList(),
           title: title,
           description:
@@ -1050,8 +1064,8 @@ class _CreateTaskFromMessageSheetState
                               TextStyle(fontSize: 11.5, color: AppColors.ink3),),
                     ),
 
-                  // ── Brand (DM / custom rooms only) ──
-                  if (widget.isDirectChat) ...[
+                  // ── Brand (DM, custom rooms, or standalone Add Task) ──
+                  if (widget.isDirectChat || widget.requireBrand) ...[
                     const SizedBox(height: 16),
                     _fieldLabel(
                         widget.requireBrand
@@ -1103,7 +1117,9 @@ class _CreateTaskFromMessageSheetState
                         _private
                             ? 'Posts in this private chat'
                             : _selectedBrandIds.isEmpty
-                                ? 'Pick “Private” or one/more brands'
+                                ? (widget.requireBrand
+                                    ? 'Pick a client (brand) for this task'
+                                    : 'Pick “Private” or one/more brands')
                                 : 'Posts to ${_selectedBrandIds.length} brand group(s)',
                         style:
                             const TextStyle(fontSize: 11, color: AppColors.ink3),

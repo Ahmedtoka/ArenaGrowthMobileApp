@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/attendance_guard.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../attendance/presentation/controllers/ping_service.dart';
@@ -12,7 +13,9 @@ import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../chat/presentation/controllers/groups_controller.dart';
 import '../../../chat/presentation/controllers/realtime_bootstrap.dart';
 import '../../../chat/presentation/screens/chats_list_tab.dart';
-import '../../../inbox/presentation/controllers/inbox_providers.dart';
+import '../../../dashboard/presentation/dashboard_screen.dart';
+import '../../../inbox/presentation/controllers/action_center_providers.dart';
+import '../../../chat/presentation/widgets/create_task_from_message_sheet.dart';
 import '../../../tasks/presentation/controllers/tasks_providers.dart';
 import '../../../tasks/presentation/screens/tasks_list_tab.dart';
 import '../../../../core/push/pending_deep_link.dart';
@@ -30,28 +33,38 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  // Tab order: Tasks (left) | Chats (center, featured) | Me (right)
-  int _index = 1; // open on Chats by default
+  // Footer order: Dashboard | Tasks | Chats | My Account
+  int _index = 0; // open on Dashboard by default
   // Sprint L — only show the update sheet ONCE per app session.
   bool _versionSheetShown = false;
 
   static const _tabs = [
+    _TabSpec('Dashboard', Icons.insights_outlined, Icons.insights),
     _TabSpec('Tasks', Icons.checklist_outlined, Icons.checklist),
     _TabSpec('Chats', Icons.chat_bubble_outline, Icons.chat_bubble),
-    _TabSpec('Me', Icons.person_outline, Icons.person),
+    _TabSpec('Account', Icons.person_outline, Icons.person),
   ];
+
+  // The "My Account" tab index (shows the signed-in person's first name).
+  static const _accountIndex = 3;
 
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authControllerProvider).value;
     final inboxCount =
-        ref.watch(inboxProvider).valueOrNull?.redCount ?? 0;
+        ref.watch(actionCenterProvider).valueOrNull?.unread ?? 0;
 
     // Show the signed-in person's FIRST name on the "Me" tab + app bar so it's
     // obvious whose account this is (handy when juggling multiple emulators).
     final firstName = (user?.name ?? '').trim().split(' ').first;
     String labelFor(int i) =>
-        (i == 2 && firstName.isNotEmpty) ? firstName : _tabs[i].label;
+        (i == _accountIndex && firstName.isNotEmpty) ? firstName : _tabs[i].label;
+
+    // Only managers may assign work to others — gate the header Add Task button
+    // (the backend enforces this too).
+    final canAssign = (user?.isOwner ?? false) ||
+        (user?.isAccountManager ?? false) ||
+        (user?.teamRole == 'department_manager');
 
     // Keep all groups subscribed to Reverb + listen for events to refresh the
     // chats list preview/timestamp live (without opening any chat).
@@ -110,44 +123,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         },
         child: Scaffold(
       appBar: AppBar(
+        centerTitle: true,
         title: Text(labelFor(_index)),
+        // ── Left: Add Task (managers) + My To-Do (everyone) ──
+        leadingWidth: canAssign ? 104 : 56,
+        leading: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(width: 4),
+            if (canAssign)
+              IconButton(
+                tooltip: 'Add Task',
+                icon: const Icon(Icons.add_box_outlined),
+                onPressed: () async {
+                  final ok = await CreateTaskFromMessageSheet.show(context);
+                  if (ok == true) ref.invalidate(tasksListProvider);
+                },
+              ),
+            IconButton(
+              tooltip: 'My To-Do',
+              icon: const Icon(Icons.add_task),
+              onPressed: () async {
+                // Work-gate: personal task only while checked-in + active.
+                if (!await ref.ensureCheckedIn(context)) return;
+                if (context.mounted) await _SelfTaskSheet.show(context);
+              },
+            ),
+          ],
+        ),
+        // ── Right: Shoot Calendar + Notifications ──
         actions: [
-          // Everyone gets a dashboard — scoped to their role on the server
-          // (owner → all, AM → their brands, dept-manager → their dept,
-          // employee → their own tasks).
           if (user != null)
             IconButton(
-              tooltip: 'Dashboard',
-              onPressed: () => context.push('/dashboard'),
-              icon: const Icon(Icons.insights_outlined),
-            ),
-          // Create group — managers only (custom brainstorming rooms).
-          if (user != null &&
-              (user.teamRole == 'owner' ||
-                  user.teamRole == 'account_manager' ||
-                  user.teamRole == 'department_manager'))
-            IconButton(
-              tooltip: 'Create group',
-              onPressed: () => context.push('/groups/new'),
-              icon: const Icon(Icons.group_add_outlined),
-            ),
-          // السبحة — social tally counter. Shown for social-media people
-          // (department/job contains "social") and for owners.
-          if (user != null &&
-              (user.teamRole == 'owner' ||
-                  (user.department ?? '').toLowerCase().contains('social') ||
-                  (user.jobTitle ?? '').toLowerCase().contains('social')))
-            IconButton(
-              tooltip: 'Social tally',
-              onPressed: () => context.push('/social'),
-              icon: const Icon(Icons.touch_app_outlined),
-            ),
-          // My scorecard — points, rank and payslip. Every employee has one.
-          if (user != null)
-            IconButton(
-              tooltip: 'My scorecard',
-              onPressed: () => context.push('/scorecard'),
-              icon: const Icon(Icons.workspace_premium_outlined),
+              tooltip: 'Shoot calendar',
+              onPressed: () => context.push('/shoots'),
+              icon: const Icon(Icons.camera_alt_outlined),
             ),
           IconButton(
             tooltip: 'Notifications',
@@ -158,22 +168,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
       body: switch (_index) {
-        0 => const TasksListTab(),
-        1 => const ChatsListTab(),
-        2 => _MeTab(user: user),
+        0 => const DashboardScreen(embedded: true),
+        1 => const TasksListTab(),
+        2 => const ChatsListTab(),
+        3 => _MeTab(user: user),
         _ => const SizedBox.shrink(),
       },
-      floatingActionButton: _index == 0
-          ? FloatingActionButton.extended(
-              backgroundColor: AppColors.arenaBlue,
-              icon: const Icon(Icons.add_task, color: Colors.white),
-              label: const Text(
-                'My To-Do',
-                style: TextStyle(color: Colors.white),
-              ),
-              onPressed: () => _SelfTaskSheet.show(context),
-            )
-          : null,
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
@@ -400,17 +400,59 @@ class _MeTab extends ConsumerWidget {
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.arenaBlueLight,
+                    color: const Color(0xFFDCFCE7),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.insights_outlined,
-                      color: AppColors.arenaBlue,),
+                  child: const Icon(Icons.beach_access_outlined,
+                      color: Color(0xFF16A34A),),
                 ),
-                title: const Text('Dashboard'),
-                subtitle: const Text('Your overview & numbers'),
+                title: const Text('My leave'),
+                subtitle: const Text('Request & track vacation'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => context.push('/dashboard'),
+                onTap: () => context.push('/leaves'),
               ),
+              // Create group — managers only (custom brainstorming rooms).
+              if (user?.isOwner == true ||
+                  user?.isAccountManager == true ||
+                  user?.teamRole == 'department_manager') ...[
+                const Divider(height: 1),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.arenaBlueLight,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.group_add_outlined,
+                        color: AppColors.arenaBlue,),
+                  ),
+                  title: const Text('Create group'),
+                  subtitle: const Text('Custom brainstorming room'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/groups/new'),
+                ),
+              ],
+              // Social tally — social-media people (and owners).
+              if (user?.isOwner == true ||
+                  (user?.department ?? '').toLowerCase().contains('social') ||
+                  (user?.jobTitle ?? '').toLowerCase().contains('social')) ...[
+                const Divider(height: 1),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.arenaBlueLight,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.touch_app_outlined,
+                        color: AppColors.arenaBlue,),
+                  ),
+                  title: const Text('Social tally'),
+                  subtitle: const Text('Post / story / reel counter'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/social'),
+                ),
+              ],
             ],
           ),
         ),

@@ -11,9 +11,12 @@ import '../../features/chat/presentation/screens/create_group_screen.dart';
 import '../../features/chat/presentation/screens/group_info_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
+import '../../features/splash/presentation/screens/splash_screen.dart';
 import '../../features/inbox/presentation/screens/inbox_screen.dart';
+import '../../features/leave/presentation/leave_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/social/presentation/screens/social_tally_screen.dart';
+import '../../features/shoots/presentation/shoots_calendar_screen.dart';
 import '../../features/scorecard/presentation/scorecard_screen.dart';
 import '../../features/tasks/presentation/screens/task_detail_screen.dart';
 import 'routes.dart';
@@ -44,12 +47,16 @@ GoRouter appRouter(AppRouterRef ref) {
 
   final router = GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: Routes.home,
+    initialLocation: Routes.splash,
     debugLogDiagnostics: true,
     refreshListenable: refresh,
     // Sprint P.5 — chat conversation auto-scroll on return.
     observers: [chatRouteObserver],
     redirect: (ctx, state) {
+      // The splash screen drives its own navigation once auth resolves —
+      // never bounce away from it here.
+      if (state.matchedLocation == Routes.splash) return null;
+
       final auth = ref.read(authControllerProvider);
 
       // Still bootstrapping with no cached value — let the current route render.
@@ -63,6 +70,10 @@ GoRouter appRouter(AppRouterRef ref) {
       return null;
     },
     routes: [
+      GoRoute(
+        path: Routes.splash,
+        builder: (_, __) => const SplashScreen(),
+      ),
       GoRoute(
         path: Routes.login,
         builder: (_, __) => const LoginScreen(),
@@ -103,8 +114,16 @@ GoRouter appRouter(AppRouterRef ref) {
         builder: (_, __) => const SocialTallyScreen(),
       ),
       GoRoute(
+        path: '/shoots',
+        builder: (_, __) => const ShootsCalendarScreen(),
+      ),
+      GoRoute(
         path: '/scorecard',
         builder: (_, __) => const ScorecardScreen(),
+      ),
+      GoRoute(
+        path: '/leaves',
+        builder: (_, __) => const LeaveScreen(),
       ),
       GoRoute(
         path: '/groups/new',

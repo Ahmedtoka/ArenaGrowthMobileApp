@@ -21,6 +21,8 @@ class ApiConstants {
   static const String myGroups = '/team/me/groups';
   static const String myBrands = '/team/me/brands';
   static const String myInbox = '/team/me/inbox';
+  static const String actionCenter = '/team/me/action-center';
+  static const String actionCenterSeen = '/team/me/action-center/seen';
   static const String myCalendar = '/team/me/calendar';
   static const String myScorecard = '/team/me/scorecard';
   static const String myDuty = '/team/me/duty';
@@ -30,6 +32,16 @@ class ApiConstants {
   static const String myAvatar = '/team/me/avatar';
   static const String myPassword = '/team/me/password';
   static String userAvatar(int id) => '/team/users/$id/avatar';
+
+  // ─── Leave / vacation ───────────────────────────────────────────
+  static const String leavesMine = '/team/leaves/mine';
+  static const String leavesBalance = '/team/leaves/balance';
+  static const String leavesPending = '/team/leaves/pending';
+  static const String leaves = '/team/leaves';
+  static String leaveApprove(int id) => '/team/leaves/$id/approve';
+  static String leaveReject(int id) => '/team/leaves/$id/reject';
+  static String leaveCancel(int id) => '/team/leaves/$id/cancel';
+  static String leaveAllocation(int userId) => '/team/leaves/allocation/$userId';
 
   // ─── Attendance (Sprint E.2) ─────────────────────────
   static const String attendanceToday        = '/team/attendance/today';
@@ -54,6 +66,7 @@ class ApiConstants {
   // ─── Messages ────────────────────────────────────────
   static String groupMessages(int groupId) => '/team/groups/$groupId/messages';
   static String groupPins(int groupId) => '/team/groups/$groupId/pins';
+  static String groupMentions(int groupId) => '/team/groups/$groupId/mentions';
   static String groupTaskSummary(int groupId) => '/team/groups/$groupId/task-summary';
   static String groupMessageFile(int groupId) => '/team/groups/$groupId/messages/file';
   static String groupMessageVoice(int groupId) => '/team/groups/$groupId/messages/voice';

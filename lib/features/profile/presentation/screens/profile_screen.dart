@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../../core/errors/api_exception.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/authed_network_image.dart';
+import '../../../attendance/presentation/widgets/attendance_card.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../data/repositories/profile_repository.dart';
 
@@ -84,7 +85,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return Scaffold(
       backgroundColor: AppColors.appBg,
       appBar: AppBar(
-        title: const Text('My profile'),
+        title: const Text('My account'),
       ),
       body: ListView(
         padding: const EdgeInsets.all(12),
@@ -94,6 +95,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             uploading: _uploadingAvatar,
             onPickAvatar: _pickAndUploadAvatar,
           ),
+          const SizedBox(height: 12),
+          // Attendance — check in / out / break / away. Mounted here too so
+          // the "Check in first" gate can deep-link straight to this screen.
+          const AttendanceCard(),
           const SizedBox(height: 12),
           _ActionCard(
             icon: Icons.image,

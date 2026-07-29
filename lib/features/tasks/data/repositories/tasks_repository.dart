@@ -8,43 +8,100 @@ import '../../../../core/utils/upload_prep.dart';
 import '../models/task_model.dart';
 
 /// Filter set for the tasks index endpoint.
+///
+/// `status` is a tab key (new / in_progress / awaiting / delivered / completed
+/// — null means "All"). `range` is a date window (today / week / month /
+/// custom — null means "All time"). `assignee` + `brandId` are the manager-only
+/// filters; the backend ignores them for regular employees.
 class TasksFilter {
   final String? status;
   final int? brandId;
-  final String? department;
   final int? assignee;
-  final bool mine;
+  final String? range;
+  final DateTime? dateFrom;
+  final DateTime? dateTo;
 
   const TasksFilter({
     this.status,
     this.brandId,
-    this.department,
     this.assignee,
-    this.mine = false,
+    this.range,
+    this.dateFrom,
+    this.dateTo,
   });
+}
+
+/// Persistent open-task counters returned alongside the list. Drives the
+/// badge on the tabs so the user always knows unfinished work remains.
+class TaskCounts {
+  final int all;
+  final int newCount;
+  final int inProgress;
+  final int waiting;
+  final int delivered;
+  final int done;
+
+  const TaskCounts({
+    this.all = 0,
+    this.newCount = 0,
+    this.inProgress = 0,
+    this.waiting = 0,
+    this.delivered = 0,
+    this.done = 0,
+  });
+
+  factory TaskCounts.fromJson(Map<String, dynamic>? j) {
+    j ??= const {};
+    int n(dynamic v) => v is int ? v : int.tryParse('${v ?? 0}') ?? 0;
+    return TaskCounts(
+      all: n(j['all']),
+      newCount: n(j['new']),
+      inProgress: n(j['in_progress']),
+      waiting: n(j['waiting']),
+      delivered: n(j['delivered']),
+      done: n(j['done']),
+    );
+  }
+}
+
+/// The list endpoint's full payload: the tasks plus the live open counts.
+class TasksResult {
+  final List<TaskModel> tasks;
+  final TaskCounts counts;
+  const TasksResult({required this.tasks, required this.counts});
 }
 
 class TasksRepository {
   final DioClient _client;
   TasksRepository(this._client);
 
-  /// GET /api/team/tasks?status=...&brand_id=...&department=...&mine=1
-  Future<List<TaskModel>> list({TasksFilter filter = const TasksFilter()}) async {
+  /// GET /api/team/tasks?status=...&brand_id=...&assignee=...&range=today
+  Future<TasksResult> list({TasksFilter filter = const TasksFilter()}) async {
+    String? d(DateTime? v) => v == null
+        ? null
+        : '${v.year.toString().padLeft(4, '0')}-'
+            '${v.month.toString().padLeft(2, '0')}-'
+            '${v.day.toString().padLeft(2, '0')}';
     final res = await _client.get(
       ApiConstants.tasks,
       query: {
         if (filter.status != null) 'status': filter.status,
         if (filter.brandId != null) 'brand_id': filter.brandId,
-        if (filter.department != null) 'department': filter.department,
         if (filter.assignee != null) 'assignee': filter.assignee,
-        if (filter.mine) 'mine': 1,
+        if (filter.range != null) 'range': filter.range,
+        if (filter.dateFrom != null) 'date_from': d(filter.dateFrom),
+        if (filter.dateTo != null) 'date_to': d(filter.dateTo),
       },
     );
     final data = res.data as Map<String, dynamic>;
     final list = (data['tasks'] ?? data['data'] ?? []) as List<dynamic>;
-    return list
-        .map((t) => TaskModel.fromJson(t as Map<String, dynamic>))
-        .toList();
+    return TasksResult(
+      tasks: list
+          .map((t) => TaskModel.fromJson(t as Map<String, dynamic>))
+          .toList(),
+      counts: TaskCounts.fromJson(
+          (data['counts'] as Map?)?.cast<String, dynamic>()),
+    );
   }
 
   /// GET /api/team/groups/{id}/task-summary — live per-assignee open counts.
@@ -338,7 +395,7 @@ class TasksRepository {
   /// (audit log + chat card per task) for free this way.
   Future<List<int>> createTasksFromMessage({
     int? brandId, // null → private task (DM with the assignee)
-    required int sourceMessageId,
+    int? sourceMessageId, // null → standalone task (no source chat message)
     required List<int> assigneeIds,
     required String title,
     String? description,
@@ -377,7 +434,7 @@ class TasksRepository {
           'department': department,
           'priority': priority,
           if (dueAt != null) 'due_at': dueAt.toIso8601String(),
-          'source_message_id': sourceMessageId.toString(),
+          if (sourceMessageId != null) 'source_message_id': sourceMessageId.toString(),
           for (var i = 0; i < links.length; i++) 'links[$i]': links[i],
         };
         // Send deliverables as NESTED form fields (deliverables[i][key]) so
@@ -425,7 +482,7 @@ class TasksRepository {
             'department': department,
             'priority': priority,
             if (dueAt != null) 'due_at': dueAt.toIso8601String(),
-            'source_message_id': sourceMessageId,
+            if (sourceMessageId != null) 'source_message_id': sourceMessageId,
             if (links.isNotEmpty) 'links': links,
             if (deliverables.isNotEmpty) 'deliverables': deliverables,
           },

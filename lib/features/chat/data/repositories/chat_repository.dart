@@ -45,6 +45,16 @@ class ChatRepository {
         .toList();
   }
 
+  /// GET /api/team/groups/{id}/mentions — the current user's OPEN @mentions
+  /// in this group (raw maps; the provider maps them to GroupMention).
+  Future<List<Map<String, dynamic>>> listGroupMentions(int groupId) async {
+    final res = await _client.get(ApiConstants.groupMentions(groupId));
+    final data = res.data as Map<String, dynamic>;
+    return ((data['mentions'] as List<dynamic>?) ?? const [])
+        .map((e) => e as Map<String, dynamic>)
+        .toList();
+  }
+
   /// GET /api/team/messages/{id}/seen-by — who has read this message.
   Future<List<Map<String, dynamic>>> messageSeenBy(int messageId) async {
     final res = await _client.get(ApiConstants.messageSeenBy(messageId));

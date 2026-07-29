@@ -195,6 +195,13 @@ class _GroupRow extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
+                      // Red @ — I have an unanswered mention in this group.
+                      if (group.openMentionCount > 0)
+                        const Padding(
+                          padding: EdgeInsets.only(right: 5),
+                          child: Icon(Icons.alternate_email,
+                              size: 16, color: Color(0xFFEF4444)),
+                        ),
                       Expanded(
                         child: Text(
                           group.displayName,

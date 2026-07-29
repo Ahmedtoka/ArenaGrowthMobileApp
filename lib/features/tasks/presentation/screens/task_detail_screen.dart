@@ -17,10 +17,9 @@ import '../../../../core/errors/api_exception.dart';
 import '../../../../core/providers/app_providers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/text_direction_util.dart';
+import '../../../../core/widgets/attendance_guard.dart';
 import '../../../../core/widgets/authed_network_image.dart';
 import '../../../../core/widgets/user_avatar.dart';
-import '../../../attendance/data/models/attendance_snapshot.dart';
-import '../../../attendance/presentation/controllers/attendance_controller.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../chat/presentation/controllers/chat_providers.dart';
 import '../../data/models/task_model.dart';
@@ -153,46 +152,7 @@ class _TaskDetailBodyState extends ConsumerState<_TaskDetailBody> {
   /// request clarification, deliver) while they are checked-in AND active —
   /// not on break, not away, not checked-out. Returns true if allowed; else
   /// pops an explainer dialog and returns false.
-  Future<bool> _ensureActive() async {
-    var snap = ref.read(attendanceControllerProvider).valueOrNull;
-    // Not loaded yet (e.g. deep-linked straight into a task) — fetch first so
-    // we never false-block someone who is actually active.
-    if (snap == null) {
-      try {
-        snap = await ref.read(attendanceControllerProvider.future);
-      } catch (_) {/* fall through to off */}
-    }
-    final status = snap?.status ?? AttendanceStatus.off;
-    if (status == AttendanceStatus.active) return true;
-    if (!mounted) return false;
-    final reason = switch (status) {
-      AttendanceStatus.breakTime =>
-        'You\'re on a break right now.',
-      AttendanceStatus.away => 'You\'re marked as away right now.',
-      _ => 'You\'re checked out right now.',
-    };
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        icon: const Icon(Icons.event_busy, color: AppColors.arenaRed, size: 32),
-        title: const Text('Check in to work'),
-        content: Text(
-          '$reason\n\n'
-          'You must be checked in and active to work on tasks — start, '
-          'deliver, complete, or request clarification.\n\n'
-          'Tap the attendance button on the Home screen and Check in first.',
-          style: const TextStyle(height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Got it'),
-          ),
-        ],
-      ),
-    );
-    return false;
-  }
+  Future<bool> _ensureActive() => ref.ensureCheckedIn(context);
 
   Future<void> _action(
     String successMsg,
@@ -298,19 +258,28 @@ class _TaskDetailBodyState extends ConsumerState<_TaskDetailBody> {
             await _askProofThenComplete(repo, t);
           },
           // Sprint R — Receive prompts an optional note ("sent to client X").
-          onReceive: () => _askReceive(repo, t),
-          onApprove: () => _action(
-            'Task approved',
-            () => repo.approve(t.id),
-          ),
+          onReceive: () async {
+            if (!await _ensureActive()) return;
+            await _askReceive(repo, t);
+          },
+          onApprove: () async {
+            if (!await _ensureActive()) return;
+            await _action('Task approved', () => repo.approve(t.id));
+          },
           // Sprint R — Reject is now reachable from the task detail too,
           // not just from the chat card. Same reason prompt.
-          onReject: () => _askRejectReason(repo, t),
+          onReject: () async {
+            if (!await _ensureActive()) return;
+            await _askRejectReason(repo, t);
+          },
           onClarify: () async {
             if (!await _ensureActive()) return;
             await _askClarification(repo, t);
           },
-          onReplyClarify: () => _askReplyClarification(repo, t),
+          onReplyClarify: () async {
+            if (!await _ensureActive()) return;
+            await _askReplyClarification(repo, t);
+          },
         ),
 
         // 3.2 Project chain timeline — shown when this task is part of a
@@ -2816,42 +2785,7 @@ class _DeliverablesCardState extends ConsumerState<_DeliverablesCard> {
 
   Future<void> _openDeliver(Map<String, dynamic> d) async {
     // Work-gating: delivering only while checked-in AND active.
-    var snap = ref.read(attendanceControllerProvider).valueOrNull;
-    if (snap == null) {
-      try {
-        snap = await ref.read(attendanceControllerProvider.future);
-      } catch (_) {/* fall through to off */}
-    }
-    final status = snap?.status ?? AttendanceStatus.off;
-    if (status != AttendanceStatus.active) {
-      if (!mounted) return;
-      final reason = switch (status) {
-        AttendanceStatus.breakTime => 'You\'re on a break right now.',
-        AttendanceStatus.away => 'You\'re marked as away right now.',
-        _ => 'You\'re checked out right now.',
-      };
-      await showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          icon: const Icon(Icons.event_busy,
-              color: AppColors.arenaRed, size: 32),
-          title: const Text('Check in to work'),
-          content: Text(
-            '$reason\n\n'
-            'You must be checked in and active to deliver. Tap the attendance '
-            'button on the Home screen and Check in first.',
-            style: const TextStyle(height: 1.4),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Got it'),
-            ),
-          ],
-        ),
-      );
-      return;
-    }
+    if (!await ref.ensureCheckedIn(context)) return;
     final ok = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -3525,42 +3459,53 @@ class _HandoffButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Vertical layout on purpose: the previous Row → Expanded(Column) collapsed
+    // to ~1-char width in this position (text rendered letter-per-line). Direct
+    // Column children always get the card's real width, so text wraps normally.
     return _Card(
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('↪️ Hand off to next stage',
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: const [
+              Icon(Icons.alt_route, size: 18, color: AppColors.arenaBlue),
+              SizedBox(width: 6),
+              Expanded(
+                child: Text('Hand off to next stage',
                     style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.ink,),),
-                SizedBox(height: 2),
-                Text('Create the next task with the same deliverables',
-                    style: TextStyle(fontSize: 11.5, color: AppColors.ink3),),
-              ],
-            ),
+                        color: AppColors.ink)),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: () async {
-              final ok = await showModalBottomSheet<bool>(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.white,
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                ),
-                builder: (_) => _HandoffSheet(task: task),
-              );
-              if (ok == true) {
-                ref.invalidate(taskDetailProvider(task.id));
-                ref.invalidate(taskChainProvider(task.id));
-              }
-            },
-            child: const Text('Hand off'),
+          const SizedBox(height: 3),
+          const Text('Create the next task with the same deliverables',
+              style: TextStyle(fontSize: 11.5, color: AppColors.ink3)),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () async {
+                // Work-gate: must be checked-in + active to hand off.
+                if (!await ref.ensureCheckedIn(context)) return;
+                final ok = await showModalBottomSheet<bool>(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.white,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                  ),
+                  builder: (_) => _HandoffSheet(task: task),
+                );
+                if (ok == true) {
+                  ref.invalidate(taskDetailProvider(task.id));
+                  ref.invalidate(taskChainProvider(task.id));
+                }
+              },
+              child: const Text('Hand off'),
+            ),
           ),
         ],
       ),

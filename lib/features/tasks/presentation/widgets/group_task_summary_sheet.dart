@@ -92,7 +92,7 @@ class _GroupTaskSummarySheetState extends ConsumerState<GroupTaskSummarySheet> {
     });
     try {
       final repo = ref.read(tasksRepositoryProvider);
-      final tasks = await repo.list(
+      final result = await repo.list(
         filter: TasksFilter(
           brandId: _brandId,
           assignee: (person['assignee_id'] as num?)?.toInt(),
@@ -101,7 +101,7 @@ class _GroupTaskSummarySheetState extends ConsumerState<GroupTaskSummarySheet> {
       );
       if (!mounted) return;
       setState(() {
-        _drillTasks = tasks;
+        _drillTasks = result.tasks;
         _drillLoading = false;
       });
     } catch (_) {

@@ -189,28 +189,27 @@ flutter_launcher_icons:
   # Windows workstation (no Xcode), and the AppIcon.appiconset path
   # crashes the generator. Re-enable once an iOS project exists.
   ios: false
-  image_path: "assets/branding/app_icon.png"
+  image_path: "assets/images/Icon.png"
   min_sdk_android: 24
-  # Adaptive icon: deep navy background matching the source PNG.
-  adaptive_icon_background: "#0A0F2C"
-  adaptive_icon_foreground: "assets/branding/app_icon.png"
+  # Adaptive icon: royal-blue background matching the Arena mark.
+  adaptive_icon_background: "#2417C7"
+  adaptive_icon_foreground: "assets/images/Icon.png"
   web:
     generate: true
-    image_path: "assets/branding/app_icon.png"
-    background_color: "#0A0F2C"
+    image_path: "assets/images/Icon.png"
+    background_color: "#2417C7"
     theme_color: "#2235FF"
 
 # ───────────────────────────────────────────────────────────────
-# Native splash — regenerate after dropping the splash bg PNG:
+# Native splash — regenerate after changing the art:
 #   dart run flutter_native_splash:create
 # ───────────────────────────────────────────────────────────────
 flutter_native_splash:
-  color: "#0A0F2C"
-  image: "assets/branding/app_icon.png"
-  background_image: "assets/branding/splash_bg.png"
+  color: "#000000"
+  background_image: "assets/images/Splash.png"
   android_12:
-    image: "assets/branding/app_icon.png"
-    color: "#0A0F2C"
+    image: "assets/images/Icon.png"
+    color: "#000000"
   android: true
   # iOS off until an iOS project scaffold exists (no Xcode on Windows).
   ios: false

@@ -1215,31 +1215,37 @@ class _Footer extends StatelessWidget {
               ),
             ),
           if (showDeadline) ...[
-            const Spacer(),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: due.bg,
-                borderRadius: BorderRadius.circular(9999),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.schedule, size: 11, color: due.fg),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Deadline: ${due.label}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: due.fg,
+            const SizedBox(width: 8),
+            Flexible(
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: due.bg,
+                  borderRadius: BorderRadius.circular(9999),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.schedule, size: 11, color: due.fg),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        'Deadline: ${due.label}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: due.fg,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-            const Spacer(),
+            const SizedBox(width: 8),
           ] else
             const Spacer(),
           if (timeLabel != null)

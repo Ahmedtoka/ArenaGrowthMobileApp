@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
@@ -10,12 +11,15 @@ import '../../../../core/providers/app_providers.dart';
 import '../../../../core/push/active_chat_tracker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/text_direction_util.dart';
+import '../../../../core/widgets/attendance_guard.dart';
 import '../../../../core/widgets/user_avatar.dart';
 import '../../../tasks/presentation/widgets/group_task_summary_sheet.dart';
+import '../../../shoots/presentation/add_shoot_sheet.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../tasks/presentation/controllers/tasks_providers.dart';
 import '../../data/models/message_model.dart';
 import '../controllers/chat_providers.dart';
+import '../controllers/group_mentions_provider.dart';
 import '../controllers/groups_controller.dart';
 import '../controllers/messages_controller.dart';
 import '../controllers/typing_controller.dart';
@@ -219,9 +223,28 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen>
       message: message,
       isMine: isMine,
       myUserId: myId,
-      onReact: (emoji) => notifier.react(message.id, emoji),
+      onReact: (emoji) async {
+        // Work-gate reactions like every other mutating action.
+        if (!await ref.ensureCheckedIn(context)) return;
+        notifier.react(message.id, emoji);
+      },
     );
     if (action == null || !mounted) return;
+
+    // Work-gate: block mutating message actions unless checked-in + active.
+    // Read-only actions (reply, copy, share, seen-by) pass straight through.
+    const mutatingActions = {
+      MessageAction.pin,
+      MessageAction.createTask,
+      MessageAction.markRed,
+      MessageAction.markGreen,
+      MessageAction.revert,
+      MessageAction.edit,
+      MessageAction.delete,
+    };
+    if (mutatingActions.contains(action)) {
+      if (!await ref.ensureCheckedIn(context)) return;
+    }
 
     switch (action) {
       case MessageAction.pin:
@@ -313,6 +336,28 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen>
         me.teamRole == 'owner' ||
         me.teamRole == 'account_manager' ||
         me.teamRole == 'department_manager';
+  }
+
+  /// Who can schedule a shoot ("Add to Cuva"): managers/AM + creative & photo
+  /// people. Mirrors the server-side gate; the API also enforces it.
+  bool _canAddShoot() {
+    final me = ref.read(authControllerProvider).valueOrNull;
+    if (me == null) return false;
+    if (me.isOwner ||
+        me.teamRole == 'owner' ||
+        me.teamRole == 'account_manager' ||
+        me.teamRole == 'department_manager') {
+      return true;
+    }
+    final dept = (me.department ?? '').toLowerCase();
+    final job = (me.jobTitle ?? '').toLowerCase();
+    for (final k in ['creative', 'production', 'photo', 'media']) {
+      if (dept.contains(k)) return true;
+    }
+    for (final k in ['photograph', 'videograph', 'content', 'art director', 'reel', 'creative', 'social', 'editor']) {
+      if (job.contains(k)) return true;
+    }
+    return false;
   }
 
   GlobalKey _keyFor(int id) => _msgKeys.putIfAbsent(id, () => GlobalKey());
@@ -445,6 +490,82 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen>
     );
   }
 
+  /// The pulsing @ badge → bottom sheet listing my unanswered mentions here.
+  /// Tap one to jump to its message; replying to it clears it.
+  Future<void> _showMentionsSheet() async {
+    List<GroupMention> mentions;
+    try {
+      mentions = await ref.read(groupMentionsProvider(widget.groupId).future);
+    } catch (_) {
+      if (mounted) _showToast('Could not load mentions');
+      return;
+    }
+    if (!mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetCtx) => SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 14, 16, 8),
+              child: Row(
+                children: [
+                  Icon(Icons.alternate_email, size: 18, color: Color(0xFFEF4444)),
+                  SizedBox(width: 8),
+                  Text('Mentions waiting for your reply',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            if (mentions.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 32),
+                child: Text('No open mentions — you’re all caught up',
+                    style: TextStyle(color: AppColors.ink3)),
+              )
+            else
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: mentions.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (_, i) {
+                    final m = mentions[i];
+                    return ListTile(
+                      leading: UserAvatar(name: m.actorName, size: 36),
+                      title: Text(m.actorName,
+                          style: const TextStyle(
+                              fontSize: 13.5, fontWeight: FontWeight.w600)),
+                      subtitle: Text(
+                        m.snippet.trim().isEmpty ? '@ mentioned you' : m.snippet.trim(),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textDirection: detectBidiDirection(m.snippet),
+                      ),
+                      trailing: const Icon(Icons.north_east, size: 16, color: AppColors.ink3),
+                      onTap: () {
+                        Navigator.pop(sheetCtx);
+                        if (m.messageId != null) _scrollToMessage(m.messageId!);
+                      },
+                    );
+                  },
+                ),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// Tapped a sender's name → small popup with "Private chat" + "Add task".
   Future<void> _showPersonActions(MessageModel message) async {
     final sender = message.sender;
@@ -560,6 +681,8 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen>
   }
 
   Future<void> _sendText(String body, List<int> mentions) async {
+    // Work-gate: must be checked-in + active to send / edit.
+    if (!await ref.ensureCheckedIn(context)) return;
     // Sprint P.2 — composer is in edit mode → PATCH instead of POST.
     if (_editingMessage != null) {
       final editing = _editingMessage!;
@@ -590,12 +713,17 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen>
         );
     if (!mounted) return;
     if (_replyingTo != null) setState(() => _replyingTo = null);
+    // A reply clears any of my open @mentions in this group server-side — refetch
+    // so the pulsing badge + list update immediately.
+    ref.invalidate(groupMentionsProvider(widget.groupId));
     // Always scroll to my own outgoing message (force = true bypasses the
     // "near bottom" gate used for other people's incoming messages).
     _jumpToBottomNextFrame(force: true);
   }
 
   Future<void> _pickAndSendAttachment() async {
+    // Work-gate: must be checked-in + active to attach / send files.
+    if (!await ref.ensureCheckedIn(context)) return;
     final picked = await AttachmentPickerSheet.show(context);
     if (picked.isEmpty || !mounted) return;
 
@@ -988,6 +1116,8 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen>
   /// Called by the Composer when the user releases the mic — stores the
   /// recording as "pending preview" rather than uploading immediately.
   Future<void> _onVoiceRecorded(File file, Duration duration) async {
+    // Work-gate: must be checked-in + active to record / send voice.
+    if (!await ref.ensureCheckedIn(context)) return;
     setState(() => _pendingVoice = (file: file, duration: duration));
   }
 
@@ -1127,6 +1257,12 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen>
           ),
         ),
         actions: [
+          if (_canAddShoot())
+            IconButton(
+              icon: const Icon(Icons.add_a_photo_outlined),
+              tooltip: 'Add to Cuva',
+              onPressed: () => AddShootSheet.show(context),
+            ),
           if (_canSeeTaskSummary())
             IconButton(
               icon: const Icon(Icons.dashboard_outlined),
@@ -1137,6 +1273,13 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen>
                 groupTitle: group?.displayName ?? group?.brand?.name ?? 'Chat',
               ),
             ),
+          // Pulsing red @ badge — only when I have unanswered mentions here.
+          Consumer(builder: (context, ref, _) {
+            final count =
+                ref.watch(groupMentionsProvider(widget.groupId)).valueOrNull?.length ?? 0;
+            if (count == 0) return const SizedBox.shrink();
+            return _MentionPulseButton(count: count, onTap: _showMentionsSheet);
+          }),
           IconButton(
             icon: const Icon(Icons.push_pin_outlined),
             tooltip: 'Pinned messages',
@@ -1265,22 +1408,25 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen>
                     final showSenderName = _shouldShowSenderName(messages, i);
                     final repliedTo = _findRepliedMessage(messages, m.replyToId);
 
-                    return GestureDetector(
+                    return _SwipeToReply(
                       key: _keyFor(m.id),
-                      onLongPress: () => _onLongPress(m, isMine),
-                      child: MessageBubble(
-                        message: m,
-                        isMine: isMine,
-                        showSenderName: showSenderName,
-                        repliedTo: repliedTo,
-                        myUserId: currentUserId ?? 0,
-                        onToggleReaction: (emoji) => ref
-                            .read(messagesControllerProvider(widget.groupId)
-                                .notifier,)
-                            .react(m.id, emoji),
-                        onSenderTap: (isMine || m.sender == null)
-                            ? null
-                            : () => _showPersonActions(m),
+                      onReply: () => setState(() => _replyingTo = m),
+                      child: GestureDetector(
+                        onLongPress: () => _onLongPress(m, isMine),
+                        child: MessageBubble(
+                          message: m,
+                          isMine: isMine,
+                          showSenderName: showSenderName,
+                          repliedTo: repliedTo,
+                          myUserId: currentUserId ?? 0,
+                          onToggleReaction: (emoji) => ref
+                              .read(messagesControllerProvider(widget.groupId)
+                                  .notifier,)
+                              .react(m.id, emoji),
+                          onSenderTap: (isMine || m.sender == null)
+                              ? null
+                              : () => _showPersonActions(m),
+                        ),
                       ),
                     );
                   },
@@ -1467,6 +1613,128 @@ class _EditingBanner extends StatelessWidget {
             onPressed: onCancel,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// WhatsApp-style swipe-to-reply: drag a message left OR right; past a small
+/// threshold it fires the reply action (with a haptic) and snaps back.
+class _SwipeToReply extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onReply;
+  const _SwipeToReply({super.key, required this.child, required this.onReply});
+
+  @override
+  State<_SwipeToReply> createState() => _SwipeToReplyState();
+}
+
+class _SwipeToReplyState extends State<_SwipeToReply> {
+  double _dx = 0;
+  bool _fired = false;
+  static const double _threshold = 52;
+
+  void _reset() => setState(() {
+        _dx = 0;
+        _fired = false;
+      });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onHorizontalDragUpdate: (d) {
+        setState(() => _dx = (_dx + d.delta.dx).clamp(-90.0, 90.0));
+        if (!_fired && _dx.abs() >= _threshold) {
+          _fired = true;
+          HapticFeedback.selectionClick();
+          widget.onReply();
+        }
+      },
+      onHorizontalDragEnd: (_) => _reset(),
+      onHorizontalDragCancel: _reset,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned(
+            left: _dx > 0 ? 16 : null,
+            right: _dx < 0 ? 16 : null,
+            child: Opacity(
+              opacity: (_dx.abs() / _threshold).clamp(0.0, 1.0),
+              child: const Icon(Icons.reply, size: 20, color: AppColors.arenaBlue),
+            ),
+          ),
+          Transform.translate(offset: Offset(_dx, 0), child: widget.child),
+        ],
+      ),
+    );
+  }
+}
+
+/// The red @ badge in the app bar that softly pulses (fades in/out) while the
+/// group is open and I still have unanswered mentions. Tap → the mentions list.
+class _MentionPulseButton extends StatefulWidget {
+  final int count;
+  final VoidCallback onTap;
+  const _MentionPulseButton({required this.count, required this.onTap});
+
+  @override
+  State<_MentionPulseButton> createState() => _MentionPulseButtonState();
+}
+
+class _MentionPulseButtonState extends State<_MentionPulseButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c;
+
+  @override
+  void initState() {
+    super.initState();
+    _c = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: 'Mentions waiting for your reply',
+      onPressed: widget.onTap,
+      icon: FadeTransition(
+        opacity: Tween<double>(begin: 0.35, end: 1.0)
+            .animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut)),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            const Icon(Icons.alternate_email, color: Color(0xFFEF4444)),
+            if (widget.count > 1)
+              Positioned(
+                right: -6,
+                top: -6,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF4444),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  constraints: const BoxConstraints(minWidth: 16),
+                  child: Text(
+                    '${widget.count}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

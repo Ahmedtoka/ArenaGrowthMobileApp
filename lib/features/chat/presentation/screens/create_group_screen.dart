@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../../core/providers/app_providers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/text_direction_util.dart';
+import '../../../../core/widgets/attendance_guard.dart';
 import '../../../../core/widgets/user_avatar.dart';
 import '../controllers/groups_controller.dart';
 
@@ -57,6 +58,8 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   }
 
   Future<void> _save() async {
+    // Work-gate: creating a group only while checked-in + active.
+    if (!await ref.ensureCheckedIn(context)) return;
     final name = _name.text.trim();
     if (name.isEmpty || _selected.isEmpty || _saving) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(

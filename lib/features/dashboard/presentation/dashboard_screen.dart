@@ -17,35 +17,42 @@ import 'dashboard_providers.dart';
 /// A time filter (today / week / 15 days / month / custom range) drives the
 /// "came in" funnel; the attention strip + totals are act-now and ignore it.
 class DashboardScreen extends ConsumerWidget {
-  const DashboardScreen({super.key});
+  /// When embedded as a home-shell TAB, we drop our own Scaffold/AppBar so the
+  /// shell's shared header (centered title + quick actions) is the only one.
+  final bool embedded;
+  const DashboardScreen({super.key, this.embedded = false});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(dashboardSummaryProvider);
 
+    final content = Column(
+      children: [
+        const _FilterBar(),
+        const Divider(height: 1),
+        Expanded(
+          child: async.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => _ErrorView(
+              onRetry: () => ref.invalidate(dashboardSummaryProvider),
+            ),
+            data: (d) => RefreshIndicator(
+              onRefresh: () async {
+                await ref.refresh(dashboardSummaryProvider.future);
+              },
+              child: _DashboardBody(data: d),
+            ),
+          ),
+        ),
+      ],
+    );
+
+    if (embedded) return content;
+
     return Scaffold(
       backgroundColor: AppColors.appBg,
       appBar: AppBar(title: const Text('Dashboard')),
-      body: Column(
-        children: [
-          const _FilterBar(),
-          const Divider(height: 1),
-          Expanded(
-            child: async.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => _ErrorView(
-                onRetry: () => ref.invalidate(dashboardSummaryProvider),
-              ),
-              data: (d) => RefreshIndicator(
-                onRefresh: () async {
-                  await ref.refresh(dashboardSummaryProvider.future);
-                },
-                child: _DashboardBody(data: d),
-              ),
-            ),
-          ),
-        ],
-      ),
+      body: content,
     );
   }
 }

@@ -47,6 +47,7 @@ class BrandGroupModel with _$BrandGroupModel {
     @JsonKey(name: 'pinned_at') DateTime? pinnedAt,
     @JsonKey(name: 'last_read_message_id') int? lastReadMessageId,
     @JsonKey(name: 'unread_count') @Default(0) int unreadCount,
+    @JsonKey(name: 'open_mention_count') @Default(0) int openMentionCount,
     BrandModel? brand,
     @JsonKey(name: 'last_message') LastMessagePreview? lastMessage,
   }) = _BrandGroupModel;
