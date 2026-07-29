@@ -44,7 +44,7 @@ class LeaveRepository {
       'start_date': _d(start),
       'end_date': _d(end),
       if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
-    });
+    },);
   }
 
   /// Requests awaiting my approval (managers).

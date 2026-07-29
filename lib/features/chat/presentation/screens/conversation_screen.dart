@@ -520,7 +520,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen>
                   Icon(Icons.alternate_email, size: 18, color: Color(0xFFEF4444)),
                   SizedBox(width: 8),
                   Text('Mentions waiting for your reply',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),),
                 ],
               ),
             ),
@@ -529,7 +529,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen>
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 32),
                 child: Text('No open mentions — you’re all caught up',
-                    style: TextStyle(color: AppColors.ink3)),
+                    style: TextStyle(color: AppColors.ink3),),
               )
             else
               Flexible(
@@ -543,7 +543,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen>
                       leading: UserAvatar(name: m.actorName, size: 36),
                       title: Text(m.actorName,
                           style: const TextStyle(
-                              fontSize: 13.5, fontWeight: FontWeight.w600)),
+                              fontSize: 13.5, fontWeight: FontWeight.w600,),),
                       subtitle: Text(
                         m.snippet.trim().isEmpty ? '@ mentioned you' : m.snippet.trim(),
                         maxLines: 2,
@@ -1279,7 +1279,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen>
                 ref.watch(groupMentionsProvider(widget.groupId)).valueOrNull?.length ?? 0;
             if (count == 0) return const SizedBox.shrink();
             return _MentionPulseButton(count: count, onTap: _showMentionsSheet);
-          }),
+          },),
           IconButton(
             icon: const Icon(Icons.push_pin_outlined),
             tooltip: 'Pinned messages',
@@ -1729,7 +1729,7 @@ class _MentionPulseButtonState extends State<_MentionPulseButton>
                     style: const TextStyle(
                         color: Colors.white,
                         fontSize: 10,
-                        fontWeight: FontWeight.w700),
+                        fontWeight: FontWeight.w700,),
                   ),
                 ),
               ),

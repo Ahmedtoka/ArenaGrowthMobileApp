@@ -7,6 +7,8 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/errors/api_exception.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_dimens.dart';
+import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/inline_error_banner.dart';
 import '../../../../core/widgets/user_avatar.dart';
 import '../../../../features/auth/presentation/controllers/auth_controller.dart';
@@ -69,7 +71,7 @@ class CreateTaskFromMessageSheet extends ConsumerStatefulWidget {
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: AppRadius.sheetTop,
       ),
       builder: (_) => CreateTaskFromMessageSheet(
         sourceMessage: sourceMessage,
@@ -374,7 +376,7 @@ class _CreateTaskFromMessageSheetState
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           decoration: BoxDecoration(
             color: selected ? color.withValues(alpha: 0.15) : Colors.white,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: AppRadius.rLg,
             border: Border.all(
               color: selected ? color : Colors.grey.shade300,
               width: selected ? 1.5 : 1,
@@ -743,12 +745,12 @@ class _CreateTaskFromMessageSheetState
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: AppRadius.rSm,
             borderSide: BorderSide(color: Colors.grey.shade300),),
         focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: AppRadius.rSm,
             borderSide: const BorderSide(color: AppColors.arenaBlue, width: 1.5),),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        border: OutlineInputBorder(borderRadius: AppRadius.rSm),
       );
 
   /// Section header with a top divider + icon, matching the desktop layout.
@@ -756,11 +758,11 @@ class _CreateTaskFromMessageSheetState
       Padding(
         padding: const EdgeInsets.only(top: 18, bottom: 12),
         child: Column(children: [
-          Container(height: 1, color: const Color(0xFFE5E7EB)),
+          Container(height: 1, color: AppColors.border),
           const SizedBox(height: 14),
           Row(children: [
             Icon(icon, size: 16, color: AppColors.ink3),
-            const SizedBox(width: 8),
+            AppSpacing.hSm,
             Text(title,
                 style: const TextStyle(
                     fontSize: 13.5,
@@ -799,7 +801,7 @@ class _CreateTaskFromMessageSheetState
         padding: const EdgeInsets.only(left: 5, right: 12, top: 5, bottom: 5),
         decoration: BoxDecoration(
           color: selected ? AppColors.arenaBlue : Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: AppRadius.rLg,
           border: Border.all(
               color: selected ? AppColors.arenaBlue : Colors.grey.shade300,
               width: selected ? 1.5 : 1,),
@@ -850,7 +852,7 @@ class _CreateTaskFromMessageSheetState
           height: 64,
           decoration: BoxDecoration(
             color: const Color(0xFFF9FAFB),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: AppRadius.rSm,
             border: Border.all(
                 color: Colors.grey.shade300,
                 style: BorderStyle.solid,
@@ -890,7 +892,7 @@ class _CreateTaskFromMessageSheetState
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            AppSpacing.vLg,
             Row(
               children: [
                 Container(
@@ -914,15 +916,11 @@ class _CreateTaskFromMessageSheetState
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            AppSpacing.vLg,
 
             // ═══ Section 1 — main fields, in a card (matches desktop) ═══
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
-              ),
+            AppCard(
+              margin: EdgeInsets.zero,
               padding: const EdgeInsets.all(14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -945,7 +943,7 @@ class _CreateTaskFromMessageSheetState
                     minLines: 3,
                     decoration: _filledDec('Add more context (optional)'),
                   ),
-                  const SizedBox(height: 16),
+                  AppSpacing.vLg,
 
                   // ── Assign to ──
                   _fieldLabel('Assign to', required: true),
@@ -983,7 +981,7 @@ class _CreateTaskFromMessageSheetState
                                     left: 3, right: 6, top: 3, bottom: 3,),
                                 decoration: BoxDecoration(
                                   color: AppColors.arenaBlue.withValues(alpha: 0.10),
-                                  borderRadius: BorderRadius.circular(20),
+                                  borderRadius: AppRadius.rLg,
                                   border: Border.all(
                                       color:
                                           AppColors.arenaBlue.withValues(alpha: 0.3),),
@@ -1066,7 +1064,7 @@ class _CreateTaskFromMessageSheetState
 
                   // ── Brand (DM, custom rooms, or standalone Add Task) ──
                   if (widget.isDirectChat || widget.requireBrand) ...[
-                    const SizedBox(height: 16),
+                    AppSpacing.vLg,
                     _fieldLabel(
                         widget.requireBrand
                             ? 'Client / Brand'
@@ -1129,7 +1127,7 @@ class _CreateTaskFromMessageSheetState
 
                   // ── Deadline (after an assignee is chosen) ──
                   if (_selectedAssigneeIds.isNotEmpty) ...[
-                    const SizedBox(height: 16),
+                    AppSpacing.vLg,
                     _fieldLabel('Deadline', required: true),
                     Row(
                       children: [
@@ -1148,7 +1146,7 @@ class _CreateTaskFromMessageSheetState
                           ),
                         ),
                         if (_dueAt != null) ...[
-                          const SizedBox(width: 8),
+                          AppSpacing.hSm,
                           Expanded(
                             child: OutlinedButton.icon(
                               onPressed: () =>
@@ -1186,13 +1184,13 @@ class _CreateTaskFromMessageSheetState
                       ],
                     ),
                     if (_dueAt != null && _showTime) ...[
-                      const SizedBox(height: 8),
+                      AppSpacing.vSm,
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
                           color: const Color(0xFFF9FAFB),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFFE5E7EB)),
+                          borderRadius: AppRadius.rSm,
+                          border: Border.all(color: AppColors.border),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1282,7 +1280,7 @@ class _CreateTaskFromMessageSheetState
                   ],
 
                   // ── Priority ──
-                  const SizedBox(height: 16),
+                  AppSpacing.vLg,
                   _fieldLabel('Priority'),
                   Wrap(
                     spacing: 8,
@@ -1309,11 +1307,11 @@ class _CreateTaskFromMessageSheetState
                                   horizontal: 16, vertical: 9,),
                               decoration: BoxDecoration(
                                 color: selected ? bg : Colors.white,
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: AppRadius.rMd,
                                 border: Border.all(
                                     color: selected
                                         ? fg
-                                        : const Color(0xFFE5E7EB),
+                                        : AppColors.border,
                                     width: 2,),
                               ),
                               child: Text(label,
@@ -1355,11 +1353,11 @@ class _CreateTaskFromMessageSheetState
                     ),
                     const SizedBox(height: 6),
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: AppRadius.rXs,
                       child: LinearProgressIndicator(
                         value: _uploadPct == 0 ? null : _uploadPct,
                         minHeight: 7,
-                        backgroundColor: const Color(0xFFE5E7EB),
+                        backgroundColor: AppColors.border,
                         valueColor: const AlwaysStoppedAnimation(
                             AppColors.arenaBlue,),
                       ),
@@ -1404,7 +1402,7 @@ class _CreateTaskFromMessageSheetState
                           clipBehavior: Clip.none,
                           children: [
                             ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: AppRadius.rSm,
                               child: Image.file(f,
                                   width: 64, height: 64, fit: BoxFit.cover,),
                             ),
@@ -1456,13 +1454,13 @@ class _CreateTaskFromMessageSheetState
                           padding: const EdgeInsets.symmetric(horizontal: 10),
                           decoration: BoxDecoration(
                             color: const Color(0xFFF9FAFB),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0xFFE5E7EB)),
+                            borderRadius: AppRadius.rSm,
+                            border: Border.all(color: AppColors.border),
                           ),
                           child: Row(children: [
                             const Icon(Icons.insert_drive_file_outlined,
                                 size: 16, color: AppColors.ink3,),
-                            const SizedBox(width: 8),
+                            AppSpacing.hSm,
                             Expanded(
                               child: Text(
                                   f.path.split(Platform.pathSeparator).last,
@@ -1497,7 +1495,7 @@ class _CreateTaskFromMessageSheetState
                       decoration: _filledDec('https://…'),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  AppSpacing.hSm,
                   SizedBox(
                     height: 44,
                     child: FilledButton(
@@ -1525,13 +1523,13 @@ class _CreateTaskFromMessageSheetState
                           padding: const EdgeInsets.symmetric(horizontal: 10),
                           decoration: BoxDecoration(
                             color: const Color(0xFFF9FAFB),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0xFFE5E7EB)),
+                            borderRadius: AppRadius.rSm,
+                            border: Border.all(color: AppColors.border),
                           ),
                           child: Row(children: [
                             const Icon(Icons.link,
                                 size: 16, color: AppColors.arenaBlue,),
-                            const SizedBox(width: 8),
+                            AppSpacing.hSm,
                             Expanded(
                               child: Text(_attachedLinks[i],
                                   maxLines: 1,
@@ -1579,7 +1577,7 @@ class _CreateTaskFromMessageSheetState
                             height: 12,
                             child: CircularProgressIndicator(strokeWidth: 2),),
                       ],
-                      const SizedBox(width: 4),
+                      AppSpacing.hXs,
                       Icon(
                           _showDeliv ? Icons.expand_less : Icons.expand_more,
                           color: AppColors.ink3,),
@@ -1592,8 +1590,8 @@ class _CreateTaskFromMessageSheetState
                 // qty stepper + Add. Bounded height so the page stays short.
                 Container(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                    borderRadius: AppRadius.rSm,
+                    border: Border.all(color: AppColors.border),
                   ),
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxHeight: 300),
@@ -1638,7 +1636,7 @@ class _CreateTaskFromMessageSheetState
                                         color: added
                                             ? AppColors.arenaBlue
                                             : Colors.grey.shade400,),
-                                    const SizedBox(width: 8),
+                                    AppSpacing.hSm,
                                     Expanded(
                                       child: Text(label,
                                           maxLines: 1,
@@ -1655,7 +1653,7 @@ class _CreateTaskFromMessageSheetState
                                     // tiny qty stepper
                                     Container(
                                       decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(8),
+                                        borderRadius: AppRadius.rSm,
                                         border: Border.all(
                                             color: Colors.grey.shade300,),
                                       ),
@@ -1691,7 +1689,7 @@ class _CreateTaskFromMessageSheetState
                                         ],
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
+                                    AppSpacing.hSm,
                                     GestureDetector(
                                       onTap: () => added
                                           ? _removeDeliverableType(key)
@@ -1705,7 +1703,7 @@ class _CreateTaskFromMessageSheetState
                                                   .withValues(alpha: 0.12)
                                               : AppColors.arenaBlue,
                                           borderRadius:
-                                              BorderRadius.circular(8),
+                                              AppRadius.rSm,
                                         ),
                                         child: Text(added ? 'Added' : 'Add',
                                             style: TextStyle(
@@ -1737,8 +1735,8 @@ class _CreateTaskFromMessageSheetState
                             padding: const EdgeInsets.only(
                                 left: 12, right: 6, top: 6, bottom: 6,),
                             decoration: BoxDecoration(
-                                color: const Color(0xFFE9EBFF),
-                                borderRadius: BorderRadius.circular(20),),
+                                color: AppColors.arenaBlueLight,
+                                borderRadius: AppRadius.rLg,),
                             child: Row(mainAxisSize: MainAxisSize.min, children: [
                               Text(
                                   '${_deliverables[i]['qty']}× ${_delivLabel(_deliverables[i]['type'] as String)}',
@@ -1746,7 +1744,7 @@ class _CreateTaskFromMessageSheetState
                                       fontSize: 12.5,
                                       fontWeight: FontWeight.w600,
                                       color: AppColors.arenaBlue,),),
-                              const SizedBox(width: 4),
+                              AppSpacing.hXs,
                               GestureDetector(
                                 onTap: () =>
                                     setState(() => _deliverables.removeAt(i)),
@@ -1769,14 +1767,14 @@ class _CreateTaskFromMessageSheetState
               const SizedBox(height: 14),
               InlineErrorBanner(message: _error!),
             ],
-            const SizedBox(height: 16),
+            AppSpacing.vLg,
             // Prominent progress so a slow upload never feels frozen.
             if (_saving) ...[
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: AppColors.arenaBlue.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppRadius.rMd,
                   border:
                       Border.all(color: AppColors.arenaBlue.withValues(alpha: 0.2)),
                 ),
@@ -1804,15 +1802,15 @@ class _CreateTaskFromMessageSheetState
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    AppSpacing.vSm,
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: AppRadius.rXs,
                       child: LinearProgressIndicator(
                         value: _uploading
                             ? (_uploadPct == 0 ? null : _uploadPct)
                             : null,
                         minHeight: 8,
-                        backgroundColor: const Color(0xFFE5E7EB),
+                        backgroundColor: AppColors.border,
                         valueColor: const AlwaysStoppedAnimation(
                             AppColors.arenaBlue,),
                       ),
@@ -1828,7 +1826,7 @@ class _CreateTaskFromMessageSheetState
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              AppSpacing.vMd,
             ],
             FilledButton.icon(
               style: FilledButton.styleFrom(
@@ -1907,14 +1905,14 @@ class _MemberPickerList extends StatelessWidget {
     }
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadius.rSm,
         border: Border.all(color: Colors.grey.shade300),
       ),
       child: ListView.separated(
         padding: EdgeInsets.zero,
         itemCount: members.length,
         separatorBuilder: (_, __) =>
-            const Divider(height: 1, color: Color(0xFFE5E7EB)),
+            const Divider(height: 1, color: AppColors.border),
         itemBuilder: (ctx, i) {
           final m = members[i];
           final id = (m['id'] as num).toInt();

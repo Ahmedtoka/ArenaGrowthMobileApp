@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_dimens.dart';
 import '../../../core/widgets/inline_error_banner.dart';
 import '../data/shoot_models.dart';
 import 'shoots_providers.dart';
@@ -23,7 +24,7 @@ class AddShootSheet extends ConsumerStatefulWidget {
         isScrollControlled: true,
         backgroundColor: Colors.white,
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius: AppRadius.sheetTop,
         ),
         builder: (_) => AddShootSheet(existing: existing),
       );
@@ -121,10 +122,12 @@ class _AddShootSheetState extends ConsumerState<AddShootSheet> {
       context: context,
       initialTime: TimeOfDay(hour: _hour ?? 13, minute: _minute ?? 0),
     );
-    if (t != null) setState(() {
+    if (t != null) {
+      setState(() {
       _hour = t.hour;
       _minute = t.minute;
     });
+    }
   }
 
   Future<void> _pickEndTime() async {
@@ -132,10 +135,12 @@ class _AddShootSheetState extends ConsumerState<AddShootSheet> {
       context: context,
       initialTime: TimeOfDay(hour: _endHour ?? (_hour ?? 15), minute: _endMinute ?? 0),
     );
-    if (t != null) setState(() {
+    if (t != null) {
+      setState(() {
       _endHour = t.hour;
       _endMinute = t.minute;
     });
+    }
   }
 
   Future<void> _save() async {
@@ -172,7 +177,7 @@ class _AddShootSheetState extends ConsumerState<AddShootSheet> {
       };
       if (_editing) {
         await updateShoot(ref, widget.existing!.id, payload,
-            files: _files, links: _links);
+            files: _files, links: _links,);
       } else {
         await createShoot(ref, payload, files: _files, links: _links);
       }
@@ -202,7 +207,7 @@ class _AddShootSheetState extends ConsumerState<AddShootSheet> {
     final res = await FilePicker.platform.pickFiles(allowMultiple: true);
     if (res != null) {
       setState(() => _files.addAll(
-          res.files.where((f) => f.path != null).map((f) => File(f.path!))));
+          res.files.where((f) => f.path != null).map((f) => File(f.path!)),),);
     }
   }
 
@@ -222,7 +227,7 @@ class _AddShootSheetState extends ConsumerState<AddShootSheet> {
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           FilledButton(
               onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
-              child: const Text('Add')),
+              child: const Text('Add'),),
         ],
       ),
     );
@@ -238,13 +243,13 @@ class _AddShootSheetState extends ConsumerState<AddShootSheet> {
         const SizedBox(height: 6),
         Row(children: [
           _attachBtn(Icons.image_outlined, 'Photo', _pickImage),
-          const SizedBox(width: 8),
+          AppSpacing.hSm,
           _attachBtn(Icons.attach_file, 'File', _pickFile),
-          const SizedBox(width: 8),
+          AppSpacing.hSm,
           _attachBtn(Icons.link, 'Link', _addLink),
-        ]),
+        ],),
         if (existing.isNotEmpty) ...[
-          const SizedBox(height: 8),
+          AppSpacing.vSm,
           Wrap(spacing: 6, runSpacing: 6, children: [
             for (final a in existing)
               _chip(
@@ -252,21 +257,21 @@ class _AddShootSheetState extends ConsumerState<AddShootSheet> {
                       ? Icons.link
                       : (a.isImage ? Icons.image : Icons.insert_drive_file),
                   a.name ?? a.kind,
-                  null),
-          ]),
+                  null,),
+          ],),
         ],
         if (_files.isNotEmpty || _links.isNotEmpty) ...[
-          const SizedBox(height: 8),
+          AppSpacing.vSm,
           Wrap(spacing: 6, runSpacing: 6, children: [
             for (var i = 0; i < _files.length; i++)
               _chip(
                   Icons.insert_drive_file,
                   _files[i].path.split(Platform.pathSeparator).last,
-                  () => setState(() => _files.removeAt(i))),
+                  () => setState(() => _files.removeAt(i)),),
             for (var i = 0; i < _links.length; i++)
               _chip(Icons.link, _links[i],
-                  () => setState(() => _links.removeAt(i))),
-          ]),
+                  () => setState(() => _links.removeAt(i)),),
+          ],),
         ],
       ],
     );
@@ -278,14 +283,15 @@ class _AddShootSheetState extends ConsumerState<AddShootSheet> {
         icon: Icon(icon, size: 18),
         label: Text(label),
         style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+            padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md, vertical: AppSpacing.sm,),),
       );
 
   Widget _chip(IconData icon, String label, VoidCallback? onRemove) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: AppColors.appBg,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: AppRadius.rLg,
           border: Border.all(color: AppColors.divider),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -295,15 +301,15 @@ class _AddShootSheetState extends ConsumerState<AddShootSheet> {
             constraints: const BoxConstraints(maxWidth: 160),
             child: Text(label,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12)),
+                style: const TextStyle(fontSize: 12),),
           ),
           if (onRemove != null) ...[
-            const SizedBox(width: 4),
+            AppSpacing.hXs,
             GestureDetector(
                 onTap: onRemove,
-                child: const Icon(Icons.close, size: 14, color: AppColors.ink3)),
+                child: const Icon(Icons.close, size: 14, color: AppColors.ink3),),
           ],
-        ]),
+        ],),
       );
 
   @override
@@ -314,7 +320,8 @@ class _AddShootSheetState extends ConsumerState<AddShootSheet> {
     return Directionality(
       textDirection: TextDirection.ltr,
       child: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(16, 12, 16, 16 + viewInsets),
+        padding: EdgeInsets.fromLTRB(
+            AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.lg + viewInsets,),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -333,28 +340,28 @@ class _AddShootSheetState extends ConsumerState<AddShootSheet> {
             Row(
               children: [
                 const Icon(Icons.camera_alt, color: AppColors.arenaBlue),
-                const SizedBox(width: 8),
+                AppSpacing.hSm,
                 Text(_editing ? 'Edit shoot' : 'Add to Cuva',
                     style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.ink)),
+                        fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.ink,),),
                 const Spacer(),
                 if (_editing)
                   TextButton.icon(
                     onPressed: _saving ? null : _cancelShoot,
                     icon: const Icon(Icons.event_busy, size: 18, color: AppColors.arenaRed),
                     label: const Text('Cancel shoot',
-                        style: TextStyle(color: AppColors.arenaRed, fontWeight: FontWeight.w600)),
+                        style: TextStyle(color: AppColors.arenaRed, fontWeight: FontWeight.w600),),
                   ),
               ],
             ),
-            const SizedBox(height: 16),
+            AppSpacing.vLg,
             optsAsync.when(
               loading: () => const Padding(
                 padding: EdgeInsets.symmetric(vertical: 24),
                 child: Center(child: CircularProgressIndicator()),
               ),
               error: (_, __) => const InlineErrorBanner(
-                  message: 'Couldn’t load clients & team. Pull to retry.'),
+                  message: 'Couldn’t load clients & team. Pull to retry.',),
               data: (opts) => _form(opts),
             ),
           ],
@@ -375,7 +382,7 @@ class _AddShootSheetState extends ConsumerState<AddShootSheet> {
           constraints: const BoxConstraints(maxHeight: 150),
           decoration: BoxDecoration(
             border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: AppRadius.rSm,
           ),
           child: ListView(
             shrinkWrap: true,
@@ -387,17 +394,17 @@ class _AddShootSheetState extends ConsumerState<AddShootSheet> {
               final sel = _brandId == b.id;
               return InkWell(
                 onTap: () => setState(() => _brandId = b.id),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: AppRadius.rSm,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
                   child: Row(children: [
                     CircleAvatar(radius: 6, backgroundColor: c),
-                    const SizedBox(width: 8),
+                    AppSpacing.hSm,
                     Expanded(
                         child: Text(b.name,
-                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: sel ? c : AppColors.ink))),
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: sel ? c : AppColors.ink),),),
                     if (sel) Icon(Icons.check_circle, size: 17, color: c),
-                  ]),
+                  ],),
                 ),
               );
             }).toList(),
@@ -419,14 +426,14 @@ class _AddShootSheetState extends ConsumerState<AddShootSheet> {
                 decoration: BoxDecoration(
                   color: on ? AppColors.arenaBlue : Colors.white,
                   border: Border.all(color: on ? AppColors.arenaBlue : Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: AppRadius.rLg,
                 ),
                 child: Text(
                   t.isEmpty ? t : t[0].toUpperCase() + t.substring(1),
                   style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
-                      color: on ? Colors.white : AppColors.ink),
+                      color: on ? Colors.white : AppColors.ink,),
                 ),
               ),
             );
@@ -441,48 +448,48 @@ class _AddShootSheetState extends ConsumerState<AddShootSheet> {
                 onPressed: _pickDate,
                 icon: const Icon(Icons.event, size: 16),
                 label: Text(_date == null ? 'Date *' : '${_date!.day}/${_date!.month}',
-                    overflow: TextOverflow.ellipsis),
-                style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
+                    overflow: TextOverflow.ellipsis,),
+                style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: AppSpacing.md)),
               ),
             ),
-            const SizedBox(width: 8),
+            AppSpacing.hSm,
             Expanded(
               child: OutlinedButton(
                 onPressed: _pickTime,
-                style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
+                style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: AppSpacing.md)),
                 child: Text(_hour == null ? 'Start' : _ampm(_hour!, _minute ?? 0),
-                    overflow: TextOverflow.ellipsis),
+                    overflow: TextOverflow.ellipsis,),
               ),
             ),
-            const SizedBox(width: 8),
+            AppSpacing.hSm,
             Expanded(
               child: OutlinedButton(
                 onPressed: _pickEndTime,
-                style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
+                style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: AppSpacing.md)),
                 child: Text(_endHour == null ? 'End' : _ampm(_endHour!, _endMinute ?? 0),
-                    overflow: TextOverflow.ellipsis),
+                    overflow: TextOverflow.ellipsis,),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        AppSpacing.vMd,
         TextField(
           controller: _location,
           decoration: const InputDecoration(
-            labelText: 'Location', border: OutlineInputBorder(), prefixIcon: Icon(Icons.place_outlined)),
+            labelText: 'Location', border: OutlineInputBorder(), prefixIcon: Icon(Icons.place_outlined),),
         ),
-        const SizedBox(height: 12),
+        AppSpacing.vMd,
         TextField(
           controller: _title,
           decoration: const InputDecoration(
-            labelText: 'Title (optional)', border: OutlineInputBorder()),
+            labelText: 'Title (optional)', border: OutlineInputBorder(),),
         ),
-        const SizedBox(height: 12),
+        AppSpacing.vMd,
         TextField(
           controller: _notes,
           maxLines: 2,
           decoration: const InputDecoration(
-            labelText: 'Notes (optional)', border: OutlineInputBorder()),
+            labelText: 'Notes (optional)', border: OutlineInputBorder(),),
         ),
         const SizedBox(height: 14),
         _attachmentsSection(),
@@ -490,7 +497,7 @@ class _AddShootSheetState extends ConsumerState<AddShootSheet> {
         Row(children: [
           Expanded(child: _label('Crew on set')),
           const Text('tap ★ for lead', style: TextStyle(fontSize: 11, color: AppColors.ink3)),
-        ]),
+        ],),
         const SizedBox(height: 6),
         // selected chips
         if (_team.isNotEmpty)
@@ -503,15 +510,15 @@ class _AddShootSheetState extends ConsumerState<AddShootSheet> {
                 final lead = _leadId == m.id;
                 return Container(
                   padding: const EdgeInsets.only(left: 6, right: 2, top: 2, bottom: 2),
-                  decoration: BoxDecoration(color: AppColors.arenaBlueLight, borderRadius: BorderRadius.circular(16)),
+                  decoration: BoxDecoration(color: AppColors.arenaBlueLight, borderRadius: AppRadius.rLg),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     GestureDetector(
                       onTap: () => setState(() => _leadId = m.id),
-                      child: Icon(Icons.star, size: 15, color: lead ? const Color(0xFFF59E0B) : const Color(0xFF9AA8FF)),
+                      child: Icon(Icons.star, size: 15, color: lead ? AppColors.warning : const Color(0xFF9AA8FF)),
                     ),
                     const SizedBox(width: 3),
                     Text(m.name.split(' ').first,
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.arenaBlue)),
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.arenaBlue),),
                     IconButton(
                       icon: const Icon(Icons.close, size: 14, color: AppColors.arenaBlue),
                       visualDensity: VisualDensity.compact,
@@ -522,7 +529,7 @@ class _AddShootSheetState extends ConsumerState<AddShootSheet> {
                         if (_leadId == m.id) _leadId = _team.isEmpty ? null : _team.first;
                       }),
                     ),
-                  ]),
+                  ],),
                 );
               }).toList(),
             ),
@@ -533,14 +540,14 @@ class _AddShootSheetState extends ConsumerState<AddShootSheet> {
           constraints: const BoxConstraints(maxHeight: 190),
           decoration: BoxDecoration(
             border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: AppRadius.rSm,
           ),
           child: ListView(
             shrinkWrap: true,
             padding: const EdgeInsets.all(4),
             children: opts.team
                 .where((m) => _crewQuery.isEmpty ||
-                    ('${m.name} ${m.jobTitle ?? ''}').toLowerCase().contains(_crewQuery.toLowerCase()))
+                    ('${m.name} ${m.jobTitle ?? ''}').toLowerCase().contains(_crewQuery.toLowerCase()),)
                 .map((m) {
               final sel = _team.contains(m.id);
               return InkWell(
@@ -553,7 +560,7 @@ class _AddShootSheetState extends ConsumerState<AddShootSheet> {
                     _leadId ??= m.id;
                   }
                 }),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: AppRadius.rSm,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                   child: Row(children: [
@@ -571,7 +578,7 @@ class _AddShootSheetState extends ConsumerState<AddShootSheet> {
                     Expanded(child: Text(m.name, style: const TextStyle(fontSize: 13, color: AppColors.ink, fontWeight: FontWeight.w500))),
                     if (m.jobTitle != null)
                       Text(m.jobTitle!, style: const TextStyle(fontSize: 10.5, color: AppColors.ink3)),
-                  ]),
+                  ],),
                 ),
               );
             }).toList(),
@@ -581,7 +588,7 @@ class _AddShootSheetState extends ConsumerState<AddShootSheet> {
           const SizedBox(height: 14),
           InlineErrorBanner(message: _error!),
         ],
-        const SizedBox(height: 16),
+        AppSpacing.vLg,
         FilledButton.icon(
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.arenaBlue,
@@ -593,10 +600,10 @@ class _AddShootSheetState extends ConsumerState<AddShootSheet> {
                   width: 18,
                   height: 18,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.white)))
+                      strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.white),),)
               : Icon(_editing ? Icons.check : Icons.add, color: Colors.white),
           label: Text(_editing ? 'Save changes' : 'Add to Cuva',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),),
         ),
       ],
     );
@@ -629,10 +636,12 @@ class _AddShootSheetState extends ConsumerState<AddShootSheet> {
         const SnackBar(content: Text('Shoot cancelled')),
       );
     } catch (_) {
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _saving = false;
         _error = 'Couldn’t cancel. Try again.';
       });
+      }
     }
   }
 
@@ -640,7 +649,7 @@ class _AddShootSheetState extends ConsumerState<AddShootSheet> {
         alignment: AlignmentDirectional.centerStart,
         child: Text(t,
             style: const TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.ink2)),
+                fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.ink2,),),
       );
 
   Widget _searchField(String hint, ValueChanged<String> onChanged) => SizedBox(
@@ -653,7 +662,7 @@ class _AddShootSheetState extends ConsumerState<AddShootSheet> {
             prefixIcon: const Icon(Icons.search, size: 18),
             isDense: true,
             contentPadding: const EdgeInsets.symmetric(vertical: 8),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            border: OutlineInputBorder(borderRadius: AppRadius.rSm),
           ),
         ),
       );

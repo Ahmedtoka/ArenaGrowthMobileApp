@@ -115,12 +115,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               padding: const EdgeInsets.symmetric(vertical: 6),
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
+                color: color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(header,
                   style: TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w800, color: color)),
+                      fontSize: 12, fontWeight: FontWeight.w800, color: color,),),
             ),
             const SizedBox(height: 8),
             for (final p in people)
@@ -146,13 +146,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                  fontSize: 13, fontWeight: FontWeight.w700)),
+                                  fontSize: 13, fontWeight: FontWeight.w700,),),
                           const SizedBox(height: 1),
                           Text(p[1],
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                  fontSize: 11, color: Color(0xFF6B7280))),
+                                  fontSize: 11, color: Color(0xFF6B7280),),),
                         ],
                       ),
                     ),
@@ -167,7 +167,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(children: const [
+        const Row(children: [
           Expanded(child: Divider()),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 8),
@@ -176,10 +176,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     fontSize: 10.5,
                     fontWeight: FontWeight.w700,
                     color: Color(0xFF9CA3AF),
-                    letterSpacing: 0.5)),
+                    letterSpacing: 0.5,),),
           ),
           Expanded(child: Divider()),
-        ]),
+        ],),
         const SizedBox(height: 12),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,

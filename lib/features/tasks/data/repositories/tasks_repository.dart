@@ -100,7 +100,7 @@ class TasksRepository {
           .map((t) => TaskModel.fromJson(t as Map<String, dynamic>))
           .toList(),
       counts: TaskCounts.fromJson(
-          (data['counts'] as Map?)?.cast<String, dynamic>()),
+          (data['counts'] as Map?)?.cast<String, dynamic>(),),
     );
   }
 

@@ -30,7 +30,7 @@ class AppEmptyState extends StatelessWidget {
             AppSpacing.vMd,
             Text(text,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.ink3, fontSize: 14)),
+                style: const TextStyle(color: AppColors.ink3, fontSize: 14),),
             if (actionLabel != null && onAction != null) ...[
               AppSpacing.vMd,
               OutlinedButton(onPressed: onAction, child: Text(actionLabel!)),

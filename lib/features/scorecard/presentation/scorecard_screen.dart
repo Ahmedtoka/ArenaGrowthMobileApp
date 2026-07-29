@@ -5,7 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_dimens.dart';
 import '../../../core/utils/text_direction_util.dart';
+import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_states.dart';
+import '../../../core/widgets/status_pill.dart';
 import 'scorecard_providers.dart';
 
 /// "My scorecard" — the employee's own monthly points, rank, pay and stats.
@@ -27,7 +31,10 @@ class ScorecardScreen extends ConsumerWidget {
           Expanded(
             child: async.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => _ErrorView(onRetry: () => ref.invalidate(scorecardProvider)),
+              error: (e, _) => AppErrorState(
+                text: 'Could not load data',
+                onRetry: () => ref.invalidate(scorecardProvider),
+              ),
               data: (d) => RefreshIndicator(
                 onRefresh: () async => ref.refresh(scorecardProvider.future),
                 child: _Body(data: d),
@@ -53,7 +60,7 @@ class _MonthBar extends ConsumerWidget {
     }
 
     return Container(
-      color: Colors.white,
+      color: AppColors.surface,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -95,7 +102,7 @@ class _Body extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             gradient: const LinearGradient(colors: [AppColors.arenaBlue, AppColors.arenaBlueDark]),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: AppRadius.rLg,
           ),
           child: Column(
             children: [
@@ -106,17 +113,17 @@ class _Body extends StatelessWidget {
                   if (points['rank'] != null)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(20)),
+                      decoration: BoxDecoration(color: Colors.white24, borderRadius: AppRadius.rLg),
                       child: Text('🏆 Rank #${points['rank']} / ${points['total_people']}',
                           style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),),
                     ),
                 ],
               ),
-              const SizedBox(height: 4),
+              AppSpacing.vXs,
               Text('${_n(points['net'])}', style: const TextStyle(color: Colors.white, fontSize: 44, fontWeight: FontWeight.bold)),
               if (pv > 0)
                 Text('≈ ${NumberFormat('#,##0').format(_n(points['money']))} EGP', style: const TextStyle(color: Colors.white, fontSize: 16)),
-              const SizedBox(height: 8),
+              AppSpacing.vSm,
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -128,7 +135,7 @@ class _Body extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        AppSpacing.vMd,
 
         // ── Payslip ─────────────────────────────────────────
         _Card(
@@ -150,7 +157,7 @@ class _Body extends StatelessWidget {
                   ],
                 ),
         ),
-        const SizedBox(height: 12),
+        AppSpacing.vMd,
 
         // ── Quick stats ─────────────────────────────────────
         Row(
@@ -168,7 +175,7 @@ class _Body extends StatelessWidget {
             Expanded(child: _Stat(label: 'Rating', value: _n(rating['count']) > 0 ? '${_n(rating['avg'])}★' : '—', sub: '${_n(rating['count'])} ratings')),
           ],
         ),
-        const SizedBox(height: 12),
+        AppSpacing.vMd,
 
         // ── Points breakdown ────────────────────────────────
         if (breakdown.isNotEmpty)
@@ -182,9 +189,9 @@ class _Body extends StatelessWidget {
                     onTap: () => showModalBottomSheet(
                       context: context,
                       isScrollControlled: true,
-                      backgroundColor: Colors.white,
+                      backgroundColor: AppColors.surface,
                       shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                        borderRadius: AppRadius.sheetTop,
                       ),
                       builder: (_) => _PointDetailSheet(
                         source: '${b['source'] ?? ''}',
@@ -198,7 +205,7 @@ class _Body extends StatelessWidget {
                           Expanded(child: Text('${b['label']}  ×${b['count']}', style: const TextStyle(fontSize: 13, color: AppColors.ink2))),
                           Text('${_n(b['points']) >= 0 ? '+' : ''}${_n(b['points'])}',
                               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _n(b['points']) >= 0 ? AppColors.greenBorder : AppColors.arenaRed),),
-                          const SizedBox(width: 4),
+                          AppSpacing.hXs,
                           const Icon(Icons.chevron_right, size: 16, color: AppColors.ink3),
                         ],
                       ),
@@ -209,7 +216,7 @@ class _Body extends StatelessWidget {
           ),
 
         // ── System-usage compliance meter (separate, no money) ──
-        const SizedBox(height: 12),
+        AppSpacing.vMd,
         _Card(
           title: 'System usage compliance',
           icon: Icons.verified_user_outlined,
@@ -226,9 +233,9 @@ class _Body extends StatelessWidget {
                   Text('${_n(compliance['violations']).toInt()} violations', style: const TextStyle(fontSize: 12, color: AppColors.ink3)),
                 ],
               ),
-              const SizedBox(height: 8),
+              AppSpacing.vSm,
               ClipRRect(
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: AppRadius.rXs,
                 child: LinearProgressIndicator(
                   value: (compScore / 100).clamp(0, 1).toDouble(),
                   minHeight: 8,
@@ -242,14 +249,14 @@ class _Body extends StatelessWidget {
                   child: Text('No violations — full compliance 👏', style: TextStyle(fontSize: 12.5, color: AppColors.greenBorder)),
                 )
               else ...[
-                const SizedBox(height: 8),
+                AppSpacing.vSm,
                 for (final b in compBreakdown)
                   InkWell(
                     onTap: () => showModalBottomSheet(
                       context: context,
                       isScrollControlled: true,
-                      backgroundColor: Colors.white,
-                      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+                      backgroundColor: AppColors.surface,
+                      shape: const RoundedRectangleBorder(borderRadius: AppRadius.sheetTop),
                       builder: (_) => _PointDetailSheet(source: '${b['source'] ?? ''}', label: '${b['label']}'),
                     ),
                     child: Padding(
@@ -257,7 +264,7 @@ class _Body extends StatelessWidget {
                       child: Row(children: [
                         Expanded(child: Text('${b['label']}  ×${b['count']}', style: const TextStyle(fontSize: 12.5, color: AppColors.ink2))),
                         Text('${_n(b['points'])}', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.arenaRed)),
-                        const SizedBox(width: 4),
+                        AppSpacing.hXs,
                         const Icon(Icons.chevron_right, size: 15, color: AppColors.ink3),
                       ],),
                     ),
@@ -311,7 +318,7 @@ class _Card extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
+      decoration: BoxDecoration(color: AppColors.surface, borderRadius: AppRadius.rMd),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -333,9 +340,9 @@ class _Stat extends StatelessWidget {
   const _Stat({required this.label, required this.value, required this.sub});
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
+    return AppCard(
+      margin: EdgeInsets.zero,
+      border: false,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -343,24 +350,6 @@ class _Stat extends StatelessWidget {
           const SizedBox(height: 2),
           Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.arenaBlue)),
           Text(sub, style: const TextStyle(color: AppColors.ink3, fontSize: 11)),
-        ],
-      ),
-    );
-  }
-}
-
-class _ErrorView extends StatelessWidget {
-  final VoidCallback onRetry;
-  const _ErrorView({required this.onRetry});
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('Could not load data', style: TextStyle(color: AppColors.ink2)),
-          const SizedBox(height: 8),
-          ElevatedButton(onPressed: onRetry, child: const Text('Retry')),
         ],
       ),
     );
@@ -435,7 +424,7 @@ class _PointDetailSheetState extends ConsumerState<_PointDetailSheet> {
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
               child: Row(children: [
                 const Icon(Icons.bolt, color: AppColors.arenaBlue, size: 20),
-                const SizedBox(width: 8),
+                AppSpacing.hSm,
                 Expanded(child: Text('Why you earned: ${widget.label}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
               ],),
             ),
@@ -478,12 +467,13 @@ class _PointDetailSheetState extends ConsumerState<_PointDetailSheet> {
         Text('Opened: ${_t(r['opened_at'])}', style: const TextStyle(fontSize: 11.5, color: AppColors.ink3)),
         Text('Closed: ${_t(r['completed_at'])}', style: const TextStyle(fontSize: 11.5, color: AppColors.ink3)),
         if (onTime != null)
-          Padding(padding: const EdgeInsets.only(top: 3), child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-            decoration: BoxDecoration(color: onTime == true ? const Color(0xFFD1FAE5) : const Color(0xFFFEE2E2), borderRadius: BorderRadius.circular(4)),
-            child: Text(onTime == true ? 'On time' : 'Late',
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: onTime == true ? const Color(0xFF047857) : const Color(0xFFB91C1C)),),
-          ),),
+          Padding(
+            padding: const EdgeInsets.only(top: 3),
+            child: StatusPill(
+              onTime == true ? 'On time' : 'Late',
+              color: onTime == true ? AppColors.success : AppColors.arenaRed,
+            ),
+          ),
       ],),),
       _pts(r['points']),
     ],);

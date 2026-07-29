@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/widgets/attendance_guard.dart';
 import 'package:go_router/go_router.dart';
 
@@ -268,7 +269,7 @@ class _MeTab extends ConsumerWidget {
       return const Center(child: CircularProgressIndicator());
     }
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: AppSpacing.page,
       children: [
         // ── Profile header ─────────────────────────────────
         Card(
@@ -282,7 +283,7 @@ class _MeTab extends ConsumerWidget {
                   size: 64,
                   backgroundColor: AppColors.arenaBlue,
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: AppSpacing.lg),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -291,7 +292,7 @@ class _MeTab extends ConsumerWidget {
                         children: [
                           const Icon(Icons.check_circle,
                               size: 13, color: AppColors.success,),
-                          const SizedBox(width: 4),
+                          AppSpacing.hXs,
                           Text(
                             'Signed in as',
                             style: Theme.of(context)
@@ -306,7 +307,7 @@ class _MeTab extends ConsumerWidget {
                         user!.name,
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
-                      const SizedBox(height: 4),
+                      AppSpacing.vXs,
                       Text(
                         [user!.jobTitle, user!.department]
                             .whereType<String>()
@@ -324,13 +325,13 @@ class _MeTab extends ConsumerWidget {
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        AppSpacing.vLg,
 
         // ── Attendance (Sprint E.2): unified check-in/out + duty toggle ──
         // (the old standalone _DutyCard was merged into AttendanceCard
         //  — Away is now a sub-state of "checked in")
         const AttendanceCard(),
-        const SizedBox(height: 8),
+        AppSpacing.vSm,
 
         // ── My profile (avatar + password) ──
         Card(
@@ -339,7 +340,7 @@ class _MeTab extends ConsumerWidget {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: AppColors.arenaBlueLight,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: AppRadius.rSm,
               ),
               child: const Icon(
                 Icons.person_outline,
@@ -352,7 +353,7 @@ class _MeTab extends ConsumerWidget {
             onTap: () => context.push('/profile'),
           ),
         ),
-        const SizedBox(height: 8),
+        AppSpacing.vSm,
 
         // ── Calendar entry (moved from old Calendar tab) ──
         Card(
@@ -361,7 +362,7 @@ class _MeTab extends ConsumerWidget {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: AppColors.arenaBlueLight,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: AppRadius.rSm,
               ),
               child: const Icon(
                 Icons.calendar_today,
@@ -374,7 +375,7 @@ class _MeTab extends ConsumerWidget {
             onTap: () => context.push('/calendar'),
           ),
         ),
-        const SizedBox(height: 8),
+        AppSpacing.vSm,
 
         // ── Quick links (real, working) ────────────────────
         Card(
@@ -385,7 +386,7 @@ class _MeTab extends ConsumerWidget {
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFEF3C7),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: AppRadius.rSm,
                   ),
                   child: const Icon(Icons.workspace_premium_outlined,
                       color: Color(0xFF92400E),),
@@ -401,7 +402,7 @@ class _MeTab extends ConsumerWidget {
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: const Color(0xFFDCFCE7),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: AppRadius.rSm,
                   ),
                   child: const Icon(Icons.beach_access_outlined,
                       color: Color(0xFF16A34A),),
@@ -421,7 +422,7 @@ class _MeTab extends ConsumerWidget {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: AppColors.arenaBlueLight,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: AppRadius.rSm,
                     ),
                     child: const Icon(Icons.group_add_outlined,
                         color: AppColors.arenaBlue,),
@@ -442,7 +443,7 @@ class _MeTab extends ConsumerWidget {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: AppColors.arenaBlueLight,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: AppRadius.rSm,
                     ),
                     child: const Icon(Icons.touch_app_outlined,
                         color: AppColors.arenaBlue,),
@@ -456,7 +457,7 @@ class _MeTab extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.xl),
 
         // ── Logout ─────────────────────────────────────────
         OutlinedButton.icon(

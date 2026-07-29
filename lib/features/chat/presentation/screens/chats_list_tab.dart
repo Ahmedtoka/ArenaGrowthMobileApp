@@ -5,7 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/utils/text_direction_util.dart';
+import '../../../../core/widgets/app_states.dart';
 import '../../data/models/brand_group_model.dart';
 import '../controllers/groups_controller.dart';
 import '../controllers/typing_controller.dart';
@@ -79,18 +81,7 @@ class ChatsListTab extends ConsumerWidget {
             return ListView(
               children: const [
                 SizedBox(height: 120),
-                Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Column(
-                      children: [
-                        Icon(Icons.chat_outlined, size: 56, color: Colors.grey),
-                        SizedBox(height: 12),
-                        Text('No chats yet'),
-                      ],
-                    ),
-                  ),
-                ),
+                AppEmptyState(icon: Icons.chat_outlined, text: 'No chats yet'),
               ],
             );
           }
@@ -187,7 +178,7 @@ class _GroupRow extends ConsumerWidget {
                   ),
                 ),
               ),
-            const SizedBox(width: 12),
+            AppSpacing.hMd,
             // Title + preview
             Expanded(
               child: Column(
@@ -200,7 +191,7 @@ class _GroupRow extends ConsumerWidget {
                         const Padding(
                           padding: EdgeInsets.only(right: 5),
                           child: Icon(Icons.alternate_email,
-                              size: 16, color: Color(0xFFEF4444)),
+                              size: 16, color: Color(0xFFEF4444),),
                         ),
                       Expanded(
                         child: Text(

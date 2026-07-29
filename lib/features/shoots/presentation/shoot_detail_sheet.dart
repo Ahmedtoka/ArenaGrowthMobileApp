@@ -4,8 +4,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_dimens.dart';
 import '../../../core/utils/text_direction_util.dart';
 import '../../../core/widgets/authed_network_image.dart';
+import '../../../core/widgets/status_pill.dart';
 import '../data/shoot_models.dart';
 import 'add_shoot_sheet.dart';
 
@@ -17,13 +19,13 @@ class ShootDetailSheet extends ConsumerWidget {
   const ShootDetailSheet({super.key, required this.shoot, required this.canManage});
 
   static Future<void> show(BuildContext context,
-          {required Shoot shoot, required bool canManage}) =>
+          {required Shoot shoot, required bool canManage,}) =>
       showModalBottomSheet<void>(
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.white,
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius: AppRadius.sheetTop,
         ),
         builder: (_) => ShootDetailSheet(shoot: shoot, canManage: canManage),
       );
@@ -44,26 +46,27 @@ class ShootDetailSheet extends ConsumerWidget {
       minChildSize: 0.4,
       builder: (context, scroll) => ListView(
         controller: scroll,
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.xl,),
         children: [
           Center(
             child: Container(
               width: 40,
               height: 4,
-              margin: const EdgeInsets.only(bottom: 12),
+              margin: const EdgeInsets.only(bottom: AppSpacing.md),
               decoration: BoxDecoration(
                   color: AppColors.divider,
-                  borderRadius: BorderRadius.circular(4)),
+                  borderRadius: BorderRadius.circular(4),),
             ),
           ),
           // ── Header ──
           Row(
             children: [
               Container(width: 10, height: 10, decoration: BoxDecoration(color: _brandColor, shape: BoxShape.circle)),
-              const SizedBox(width: 8),
+              AppSpacing.hSm,
               Expanded(
                 child: Text(shoot.brandName ?? 'Shoot',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: _brandColor)),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: _brandColor),),
               ),
               _statusPill(shoot.status),
             ],
@@ -71,23 +74,23 @@ class ShootDetailSheet extends ConsumerWidget {
           const SizedBox(height: 6),
           Text(shoot.title,
               textDirection: detectBidiDirection(shoot.title),
-              style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+              style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),),
           if (types.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            AppSpacing.vSm,
             Wrap(spacing: 6, runSpacing: 6, children: [
               for (final t in types)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
                   decoration: BoxDecoration(
                       color: AppColors.arenaBlue.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(20)),
+                      borderRadius: AppRadius.rLg,),
                   child: Text(t,
                       style: const TextStyle(
-                          fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.arenaBlue)),
+                          fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.arenaBlue,),),
                 ),
-            ]),
+            ],),
           ],
-          const SizedBox(height: 16),
+          AppSpacing.vLg,
 
           // ── Facts ──
           _factRow(Icons.event, _dateLabel()),
@@ -98,52 +101,52 @@ class ShootDetailSheet extends ConsumerWidget {
 
           // ── Crew ──
           if (shoot.team.isNotEmpty) ...[
-            const SizedBox(height: 16),
+            AppSpacing.vLg,
             const Text('Crew on set',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.ink2)),
-            const SizedBox(height: 8),
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.ink2),),
+            AppSpacing.vSm,
             Wrap(spacing: 6, runSpacing: 6, children: [
               for (final m in shoot.team)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                       color: AppColors.appBg,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppColors.divider)),
+                      borderRadius: AppRadius.rLg,
+                      border: Border.all(color: AppColors.divider),),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     if (m.id == shoot.leadId) ...[
-                      const Icon(Icons.star, size: 13, color: Color(0xFFF59E0B)),
-                      const SizedBox(width: 4),
+                      const Icon(Icons.star, size: 13, color: AppColors.warning),
+                      AppSpacing.hXs,
                     ],
                     Text(m.name, style: const TextStyle(fontSize: 12.5)),
-                  ]),
+                  ],),
                 ),
-            ]),
+            ],),
           ],
 
           // ── Attachments ──
           if (shoot.attachments.isNotEmpty) ...[
             const SizedBox(height: 18),
             const Text('Attachments',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.ink2)),
-            const SizedBox(height: 8),
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.ink2),),
+            AppSpacing.vSm,
             if (images.isNotEmpty)
               Wrap(spacing: 8, runSpacing: 8, children: [
                 for (final a in images)
                   GestureDetector(
                     onTap: () => ref.read(attachmentDownloaderProvider).downloadAndOpen(
-                          a.url ?? '', filename: a.name, mimeType: a.mime),
+                          a.url ?? '', filename: a.name, mimeType: a.mime,),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: AppRadius.rSm,
                       child: AuthedNetworkImage(
-                          url: a.url ?? '', width: 92, height: 92, fit: BoxFit.cover),
+                          url: a.url ?? '', width: 92, height: 92, fit: BoxFit.cover,),
                     ),
                   ),
-              ]),
+              ],),
             for (final a in files)
               _attachRow(Icons.insert_drive_file_outlined, a.name ?? 'File',
                   () => ref.read(attachmentDownloaderProvider).downloadAndOpen(
-                        a.url ?? '', filename: a.name, mimeType: a.mime)),
+                        a.url ?? '', filename: a.name, mimeType: a.mime,),),
             for (final a in links)
               _attachRow(Icons.link, a.name ?? a.url ?? 'Link', () async {
                 final u = Uri.tryParse(a.url ?? '');
@@ -180,16 +183,16 @@ class ShootDetailSheet extends ConsumerWidget {
   }
 
   Widget _factRow(IconData icon, String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Icon(icon, size: 17, color: AppColors.ink3),
           const SizedBox(width: 10),
           Expanded(
             child: Text(text,
                 textDirection: detectBidiDirection(text),
-                style: const TextStyle(fontSize: 13.5, color: AppColors.ink)),
+                style: const TextStyle(fontSize: 13.5, color: AppColors.ink),),
           ),
-        ]),
+        ],),
       );
 
   Widget _attachRow(IconData icon, String label, VoidCallback onTap) => InkWell(
@@ -199,19 +202,19 @@ class ShootDetailSheet extends ConsumerWidget {
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: AppColors.appBg,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: AppRadius.rSm,
             border: Border.all(color: AppColors.divider),
           ),
           child: Row(children: [
             Icon(icon, size: 18, color: AppColors.arenaBlue),
-            const SizedBox(width: 8),
+            AppSpacing.hSm,
             Expanded(
                 child: Text(label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 13))),
+                    style: const TextStyle(fontSize: 13),),),
             const Icon(Icons.open_in_new, size: 15, color: AppColors.ink3),
-          ]),
+          ],),
         ),
       );
 
@@ -219,15 +222,10 @@ class ShootDetailSheet extends ConsumerWidget {
     final c = switch (status) {
       'cancelled' => AppColors.arenaRed,
       'delivered' => const Color(0xFF16A34A),
-      'shot' || 'editing' || 'in_progress' => const Color(0xFFF59E0B),
+      'shot' || 'editing' || 'in_progress' => AppColors.warning,
       _ => AppColors.arenaBlue,
     };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: c.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
-      child: Text(status.replaceAll('_', ' '),
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: c)),
-    );
+    return StatusPill(status.replaceAll('_', ' '), color: c);
   }
 
   static Color? _parseHex(String? hex) {

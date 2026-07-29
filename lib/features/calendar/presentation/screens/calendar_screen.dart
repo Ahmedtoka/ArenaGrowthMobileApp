@@ -4,7 +4,9 @@ import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/utils/text_direction_util.dart';
+import '../../../../core/widgets/app_states.dart';
 import '../../data/models/calendar_event.dart';
 import '../controllers/calendar_providers.dart';
 
@@ -45,25 +47,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       ),
       body: eventsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                const SizedBox(height: 12),
-                Text('Could not load calendar\n$e', textAlign: TextAlign.center),
-                const SizedBox(height: 12),
-                FilledButton.icon(
-                  onPressed: () =>
-                      ref.invalidate(calendarEventsProvider(range)),
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Retry'),
-                ),
-              ],
-            ),
-          ),
+        error: (e, _) => AppErrorState(
+          text: 'Could not load calendar\n$e',
+          onRetry: () => ref.invalidate(calendarEventsProvider(range)),
         ),
         data: (events) => _buildBody(events),
       ),
@@ -86,10 +72,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     return Column(
       children: [
         Container(
-          margin: const EdgeInsets.all(8),
+          margin: const EdgeInsets.all(AppSpacing.sm),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            color: AppColors.surface,
+            borderRadius: AppRadius.rMd,
             boxShadow: const [
               BoxShadow(
                 color: Color(0x14000000),
@@ -145,16 +131,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         ),
         Expanded(
           child: dayEvents.isEmpty
-              ? const Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.event_busy, size: 56, color: Colors.grey),
-                      SizedBox(height: 12),
-                      Text('No events on this day',
-                          style: TextStyle(color: AppColors.ink3),),
-                    ],
-                  ),
+              ? const AppEmptyState(
+                  icon: Icons.event_busy,
+                  text: 'No events on this day',
                 )
               : ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -201,7 +180,7 @@ class _EventRow extends StatelessWidget {
     final end = event.endsAt;
     final title = event.title ?? 'Event';
     return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: AppRadius.rSm,
       child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -210,7 +189,7 @@ class _EventRow extends StatelessWidget {
             Container(width: 4, color: _color),
             Expanded(
               child: Container(
-                color: Colors.white,
+                color: AppColors.surface,
                 child: ListTile(
                   leading: Container(
                     width: 40,
@@ -218,7 +197,7 @@ class _EventRow extends StatelessWidget {
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: _color.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: AppRadius.rSm,
                     ),
                     child: Icon(_icon, color: _color, size: 20),
                   ),

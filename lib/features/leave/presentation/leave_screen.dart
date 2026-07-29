@@ -65,7 +65,7 @@ class LeaveScreen extends ConsumerWidget {
                 child: Center(child: CircularProgressIndicator()),
               ),
               error: (_, __) => const AppErrorState(
-                  text: 'Couldn’t load your leave. Pull to retry.'),
+                  text: 'Couldn’t load your leave. Pull to retry.',),
               data: (m) => _BalanceCard(balance: m.balance),
             ),
             if (isManager) ...[
@@ -81,7 +81,7 @@ class LeaveScreen extends ConsumerWidget {
               data: (m) => m.requests.isEmpty
                   ? const AppEmptyState(
                       icon: Icons.beach_access_outlined,
-                      text: 'No leave requests yet.')
+                      text: 'No leave requests yet.',)
                   : Column(
                       children: m.requests
                           .map((r) => _MyRequestRow(req: r))
@@ -113,7 +113,7 @@ class _BalanceCard extends StatelessWidget {
         children: [
           Text('Leave balance · ${balance.year}',
               style: const TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.ink2)),
+                  fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.ink2,),),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -147,9 +147,9 @@ class _BalanceCard extends StatelessWidget {
               style: TextStyle(
                   fontSize: big ? 26 : 20,
                   fontWeight: FontWeight.w800,
-                  color: color)),
+                  color: color,),),
           Text(label,
-              style: const TextStyle(fontSize: 11, color: AppColors.ink3)),
+              style: const TextStyle(fontSize: 11, color: AppColors.ink3),),
         ],
       ),
     );
@@ -169,7 +169,7 @@ class _PendingApprovals extends ConsumerWidget {
       error: (_, __) => const SizedBox.shrink(),
       data: (list) => list.isEmpty
           ? const AppEmptyState(
-              icon: Icons.inbox_outlined, text: 'Nothing waiting on you.')
+              icon: Icons.inbox_outlined, text: 'Nothing waiting on you.',)
           : Column(
               children: list
                   .map((r) => _ApprovalRow(req: r))
@@ -225,15 +225,15 @@ class _ApprovalRowState extends ConsumerState<_ApprovalRow> {
         children: [
           Text(r.userName ?? 'Employee',
               style: const TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.w700)),
+                  fontSize: 14, fontWeight: FontWeight.w700,),),
           const SizedBox(height: 2),
           Text('${_range(r)} · ${r.days} day(s) · ${r.type}',
-              style: const TextStyle(fontSize: 12, color: AppColors.ink3)),
+              style: const TextStyle(fontSize: 12, color: AppColors.ink3),),
           if ((r.reason ?? '').isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(r.reason!,
                 textDirection: detectBidiDirection(r.reason),
-                style: const TextStyle(fontSize: 12.5, color: AppColors.ink2)),
+                style: const TextStyle(fontSize: 12.5, color: AppColors.ink2),),
           ],
           const SizedBox(height: 10),
           if (_busy)
@@ -241,7 +241,7 @@ class _ApprovalRowState extends ConsumerState<_ApprovalRow> {
                 child: SizedBox(
                     height: 22,
                     width: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2)))
+                    child: CircularProgressIndicator(strokeWidth: 2),),)
           else
             Row(
               children: [
@@ -249,7 +249,7 @@ class _ApprovalRowState extends ConsumerState<_ApprovalRow> {
                   child: OutlinedButton(
                     onPressed: () => _decide(false),
                     style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.arenaRed),
+                        foregroundColor: AppColors.arenaRed,),
                     child: const Text('Reject'),
                   ),
                 ),
@@ -258,7 +258,7 @@ class _ApprovalRowState extends ConsumerState<_ApprovalRow> {
                   child: FilledButton(
                     onPressed: () => _decide(true),
                     style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF16A34A)),
+                        backgroundColor: const Color(0xFF16A34A),),
                     child: const Text('Approve'),
                   ),
                 ),
@@ -295,18 +295,18 @@ class _MyRequestRow extends ConsumerWidget {
               children: [
                 Text('${_range(req)} · ${req.days} day(s)',
                     style: const TextStyle(
-                        fontSize: 13.5, fontWeight: FontWeight.w700)),
+                        fontSize: 13.5, fontWeight: FontWeight.w700,),),
                 const SizedBox(height: 2),
                 Text(
                     '${req.type}'
                     '${req.reviewedBy != null ? ' · by ${req.reviewedBy}' : ''}',
                     style:
-                        const TextStyle(fontSize: 12, color: AppColors.ink3)),
+                        const TextStyle(fontSize: 12, color: AppColors.ink3),),
                 if ((req.reviewNote ?? '').isNotEmpty)
                   Text(req.reviewNote!,
                       textDirection: detectBidiDirection(req.reviewNote),
                       style:
-                          const TextStyle(fontSize: 11.5, color: AppColors.ink3)),
+                          const TextStyle(fontSize: 11.5, color: AppColors.ink3),),
               ],
             ),
           ),
@@ -400,10 +400,10 @@ class _RequestSheetState extends ConsumerState<_RequestSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text('Request leave',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),),
           const SizedBox(height: 14),
           const Text('Type',
-              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),),
           const SizedBox(height: 6),
           Wrap(
             spacing: 8,
@@ -416,19 +416,19 @@ class _RequestSheetState extends ConsumerState<_RequestSheet> {
                 selectedColor: AppColors.arenaBlue,
                 labelStyle: TextStyle(
                     color: sel ? Colors.white : AppColors.ink2,
-                    fontWeight: FontWeight.w600),
+                    fontWeight: FontWeight.w600,),
               );
             }).toList(),
           ),
           const SizedBox(height: 14),
           const Text('Dates',
-              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),),
           const SizedBox(height: 6),
           OutlinedButton.icon(
             icon: const Icon(Icons.event, size: 18),
             label: Text(_range == null
                 ? 'Pick date range'
-                : '${f.format(_range!.start)} – ${f.format(_range!.end)}'),
+                : '${f.format(_range!.start)} – ${f.format(_range!.end)}',),
             onPressed: () async {
               final picked = await showDateRangePicker(
                 context: context,
@@ -440,7 +440,7 @@ class _RequestSheetState extends ConsumerState<_RequestSheet> {
           ),
           const SizedBox(height: 14),
           const Text('Reason (optional)',
-              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),),
           const SizedBox(height: 6),
           TextField(
             controller: _reason,
@@ -449,13 +449,13 @@ class _RequestSheetState extends ConsumerState<_RequestSheet> {
             decoration: InputDecoration(
               hintText: 'Add a note for your manager…',
               border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10)),
+                  borderRadius: BorderRadius.circular(10),),
             ),
           ),
           if (_error != null) ...[
             const SizedBox(height: 8),
             Text(_error!,
-                style: const TextStyle(color: AppColors.arenaRed, fontSize: 12)),
+                style: const TextStyle(color: AppColors.arenaRed, fontSize: 12),),
           ],
           const SizedBox(height: 16),
           SizedBox(
@@ -464,13 +464,13 @@ class _RequestSheetState extends ConsumerState<_RequestSheet> {
               onPressed: _busy ? null : _submit,
               style: FilledButton.styleFrom(
                   backgroundColor: AppColors.arenaBlue,
-                  padding: const EdgeInsets.symmetric(vertical: 14)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),),
               child: _busy
                   ? const SizedBox(
                       height: 20,
                       width: 20,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
+                          strokeWidth: 2, color: Colors.white,),)
                   : const Text('Submit request'),
             ),
           ),
@@ -503,10 +503,10 @@ Future<String?> _promptNote(BuildContext context) async {
       ),
       actions: [
         TextButton(
-            onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(ctx), child: const Text('Cancel'),),
         FilledButton(
             onPressed: () => Navigator.pop(ctx, ctrl.text),
-            child: const Text('Reject')),
+            child: const Text('Reject'),),
       ],
     ),
   );

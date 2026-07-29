@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/providers/app_providers.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/utils/text_direction_util.dart';
 import '../../../../core/widgets/authed_network_image.dart';
 import '../../../../core/widgets/user_avatar.dart';
@@ -533,7 +534,7 @@ class _ImageAttachment extends StatelessWidget {
         child: AuthedNetworkImage(
           url: attachment.downloadUrl,
           fit: BoxFit.cover,
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: AppRadius.rXs,
         ),
       ),
     );
@@ -672,12 +673,12 @@ class _FileAttachmentState extends ConsumerState<_FileAttachment> {
     return InkWell(
       onTap: _busy ? null : _downloadAndOpen,
       onLongPress: _busy ? null : _share,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: AppRadius.rSm,
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: AppRadius.rSm,
         ),
         child: Row(
           children: [
@@ -686,7 +687,7 @@ class _FileAttachmentState extends ConsumerState<_FileAttachment> {
               height: 36,
               decoration: BoxDecoration(
                 color: AppColors.arenaBlue,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: AppRadius.rSm,
               ),
               child: Icon(
                 _iconForMime(att.mimeType),

@@ -1,4 +1,4 @@
-/// Shoot calendar ("Cuva") models — mirror of /api/team/shoots payloads.
+// Shoot calendar ("Cuva") models — mirror of /api/team/shoots payloads.
 
 class ShootTeamMember {
   final int id;

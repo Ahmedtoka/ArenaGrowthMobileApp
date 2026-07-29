@@ -50,7 +50,7 @@ extension AttendanceGuard on WidgetRef {
       context: context,
       builder: (ctx) => AlertDialog(
         icon: const Icon(Icons.badge_outlined,
-            color: AppColors.arenaBlue, size: 34),
+            color: AppColors.arenaBlue, size: 34,),
         title: const Text('Check in first'),
         content: Text(
           '$reason\n\n'

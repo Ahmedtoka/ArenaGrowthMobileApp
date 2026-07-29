@@ -5,7 +5,11 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/providers/app_providers.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/utils/text_direction_util.dart';
+import '../../../../core/widgets/app_card.dart';
+import '../../../../core/widgets/app_states.dart';
+import '../../../../core/widgets/status_pill.dart';
 import '../controllers/action_center_providers.dart';
 
 /// The notification center, rebuilt into four clean categories:
@@ -75,8 +79,7 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
       ),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => _Empty(
-          icon: Icons.wifi_off,
+        error: (_, __) => AppErrorState(
           text: 'Couldn’t load your notifications.\nPull to retry.',
           onRetry: () => ref.invalidate(actionCenterProvider),
         ),
@@ -86,7 +89,7 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
               b.tasksDone.isEmpty &&
               b.updates.isEmpty;
           if (empty) {
-            return const _Empty(
+            return const AppEmptyState(
               icon: Icons.notifications_none,
               text: 'You’re all caught up 🎉',
             );
@@ -94,7 +97,7 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
           return RefreshIndicator(
             onRefresh: () async => ref.invalidate(actionCenterProvider),
             child: ListView(
-              padding: const EdgeInsets.only(bottom: 24),
+              padding: const EdgeInsets.only(bottom: AppSpacing.xl),
               children: [
                 _section(
                   cat: 'mentions',
@@ -109,7 +112,7 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                 _section(
                   cat: 'clarifications',
                   title: '❓ Clarifications you owe',
-                  color: const Color(0xFFF59E0B),
+                  color: AppColors.warning,
                   items: b.clarifications,
                   actionRequired: true,
                   onTap: (it) => context.push('/tasks/${it.id}'),
@@ -157,7 +160,7 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
             children: [
               Text(title,
                   style: TextStyle(
-                      fontSize: 13.5, fontWeight: FontWeight.w800, color: color)),
+                      fontSize: 13.5, fontWeight: FontWeight.w800, color: color,),),
               const SizedBox(width: 6),
               // Badge shows UNREAD only, so it drops as you open items.
               Container(
@@ -166,12 +169,12 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                     color: unread > 0
                         ? color.withValues(alpha: 0.12)
                         : AppColors.ink3.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10)),
+                    borderRadius: AppRadius.rSm,),
                 child: Text(unread > 0 ? '$unread' : 'all seen',
                     style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
-                        color: unread > 0 ? color : AppColors.ink3)),
+                        color: unread > 0 ? color : AppColors.ink3,),),
               ),
             ],
           ),
@@ -182,91 +185,64 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
   }
 
   Widget _row(String cat, ActionItem it, Color color, bool actionRequired,
-      void Function(ActionItem) onTap) {
+      void Function(ActionItem) onTap,) {
     final read = _isRead(cat, it);
     // Read rows dim right down; action-required unread rows keep full contrast.
     final opacity = read ? 0.55 : 1.0;
 
-    return InkWell(
-      onTap: () => _open(cat, it, () => onTap(it)),
-      child: Opacity(
-        opacity: opacity,
-        child: Container(
-          margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: read ? const Color(0xFFF3F4F6) : Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border(
-                left: BorderSide(
-                    color: read ? AppColors.ink3 : color, width: 3)),
-          ),
-          child: Row(
-            children: [
-              // ── Status indicator ──────────────────────────────────────
-              // Action-required + unread → pulsing dot ("do something").
-              // Read → static check. Informational unread → static dot.
-              _StatusDot(
-                color: color,
-                read: read,
-                pulse: actionRequired && !read,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(it.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textDirection: detectBidiDirection(it.title),
-                        style: TextStyle(
-                            fontSize: 13.5,
-                            fontWeight:
-                                read ? FontWeight.w600 : FontWeight.w700,
-                            color: AppColors.ink)),
-                    const SizedBox(height: 2),
-                    Text(it.subtitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        textDirection: detectBidiDirection(it.subtitle),
-                        style:
-                            const TextStyle(fontSize: 12, color: AppColors.ink3)),
-                    // "Action needed" tag — only while it still needs you.
-                    if (actionRequired && !read) ...[
-                      const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.bolt, size: 12, color: color),
-                            const SizedBox(width: 3),
-                            Text('Action needed',
-                                style: TextStyle(
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: color)),
-                          ],
-                        ),
-                      ),
-                    ],
+    return Opacity(
+      opacity: opacity,
+      child: AppCard(
+        onTap: () => _open(cat, it, () => onTap(it)),
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+        accent: read ? AppColors.ink3 : color,
+        background: read ? const Color(0xFFF3F4F6) : Colors.white,
+        child: Row(
+          children: [
+            // ── Status indicator ──────────────────────────────────────
+            // Action-required + unread → pulsing dot ("do something").
+            // Read → static check. Informational unread → static dot.
+            _StatusDot(
+              color: color,
+              read: read,
+              pulse: actionRequired && !read,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(it.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textDirection: detectBidiDirection(it.title),
+                      style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight:
+                              read ? FontWeight.w600 : FontWeight.w700,
+                          color: AppColors.ink,),),
+                  const SizedBox(height: 2),
+                  Text(it.subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textDirection: detectBidiDirection(it.subtitle),
+                      style:
+                          const TextStyle(fontSize: 12, color: AppColors.ink3),),
+                  // "Action needed" tag — only while it still needs you.
+                  if (actionRequired && !read) ...[
+                    const SizedBox(height: 6),
+                    StatusPill('Action needed', color: color, icon: Icons.bolt),
                   ],
-                ),
+                ],
               ),
-              const SizedBox(width: 8),
-              if (it.at != null)
-                Text(DateFormat('MMM d').format(it.at!),
-                    style: const TextStyle(fontSize: 11, color: AppColors.ink3)),
-              const SizedBox(width: 4),
-              const Icon(Icons.chevron_right, size: 18, color: AppColors.ink3),
-            ],
-          ),
+            ),
+            AppSpacing.hSm,
+            if (it.at != null)
+              Text(DateFormat('MMM d').format(it.at!),
+                  style: const TextStyle(fontSize: 11, color: AppColors.ink3),),
+            AppSpacing.hXs,
+            const Icon(Icons.chevron_right, size: 18, color: AppColors.ink3),
+          ],
         ),
       ),
     );
@@ -317,7 +293,7 @@ class _StatusDotState extends State<_StatusDot>
   @override
   Widget build(BuildContext context) {
     if (widget.read) {
-      return Icon(Icons.check_circle, size: 18, color: AppColors.ink3);
+      return const Icon(Icons.check_circle, size: 18, color: AppColors.ink3);
     }
     if (!widget.pulse) {
       // Informational unread → static filled dot.
@@ -360,36 +336,6 @@ class _StatusDotState extends State<_StatusDot>
           ),
         );
       },
-    );
-  }
-}
-
-class _Empty extends StatelessWidget {
-  final IconData icon;
-  final String text;
-  final VoidCallback? onRetry;
-  const _Empty({required this.icon, required this.text, this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 46, color: AppColors.ink3),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(text,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.ink3, fontSize: 14)),
-          ),
-          if (onRetry != null) ...[
-            const SizedBox(height: 12),
-            OutlinedButton(onPressed: onRetry, child: const Text('Retry')),
-          ],
-        ],
-      ),
     );
   }
 }

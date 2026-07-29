@@ -16,9 +16,12 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/errors/api_exception.dart';
 import '../../../../core/providers/app_providers.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/utils/text_direction_util.dart';
+import '../../../../core/widgets/app_states.dart';
 import '../../../../core/widgets/attendance_guard.dart';
 import '../../../../core/widgets/authed_network_image.dart';
+import '../../../../core/widgets/status_pill.dart';
 import '../../../../core/widgets/user_avatar.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../chat/presentation/controllers/chat_providers.dart';
@@ -46,26 +49,9 @@ class TaskDetailScreen extends ConsumerWidget {
       ),
       body: taskAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.error_outline, size: 56, color: Colors.red),
-                const SizedBox(height: 12),
-                Text('Could not load task\n${e.toString()}',
-                    textAlign: TextAlign.center,),
-                const SizedBox(height: 16),
-                FilledButton.icon(
-                  onPressed: () =>
-                      ref.invalidate(taskDetailProvider(taskId)),
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Retry'),
-                ),
-              ],
-            ),
-          ),
+        error: (e, _) => AppErrorState(
+          text: 'Could not load task\n${e.toString()}',
+          onRetry: () => ref.invalidate(taskDetailProvider(taskId)),
         ),
         data: (task) => _TaskDetailBody(task: task),
       ),
@@ -240,7 +226,7 @@ class _TaskDetailBodyState extends ConsumerState<_TaskDetailBody> {
         //    priority. NO "Assigned to" (the viewer is the assignee).
         _HeaderV2(task: t),
 
-        const SizedBox(height: 12),
+        AppSpacing.vMd,
 
         // 3. Action CTAs — visible and explicit so a fresh assignee knows
         //    what to do next.
@@ -285,20 +271,20 @@ class _TaskDetailBodyState extends ConsumerState<_TaskDetailBody> {
         // 3.2 Project chain timeline — shown when this task is part of a
         //     handoff pipeline (has a parent, a root, or onward children).
         if (t.isChained) ...[
-          const SizedBox(height: 12),
+          AppSpacing.vMd,
           _ChainCard(taskId: t.id),
         ],
 
         // 3.3 Hand off to next stage — managers / AMs / owner / the creator.
         if (canHandoff) ...[
-          const SizedBox(height: 12),
+          AppSpacing.vMd,
           _HandoffButton(task: t),
         ],
 
         // 3.5 Deliverables checklist (quantified task) — the assignee ticks
         //     off how many of each type they finished.
         if (t.deliverables.isNotEmpty) ...[
-          const SizedBox(height: 12),
+          AppSpacing.vMd,
           _DeliverablesCard(
             taskId: t.id,
             deliverables: t.deliverables,
@@ -311,38 +297,38 @@ class _TaskDetailBodyState extends ConsumerState<_TaskDetailBody> {
 
         // 4. Description with See more / copy.
         if (descBody.isNotEmpty) ...[
-          const SizedBox(height: 12),
+          AppSpacing.vMd,
           _DescriptionCard(text: descBody),
         ],
 
         // 5. Link chips (Link 1, Link 2, …) with copy + open icons.
         if (links.isNotEmpty) ...[
-          const SizedBox(height: 8),
+          AppSpacing.vSm,
           _LinksCard(urls: links),
         ],
 
         // 6. Image carousel (squares).
         if (images.isNotEmpty) ...[
-          const SizedBox(height: 8),
+          AppSpacing.vSm,
           _ImagesCard(images: images),
         ],
 
         // 7. Files (non-image attachments).
         if (files.isNotEmpty) ...[
-          const SizedBox(height: 8),
+          AppSpacing.vSm,
           _FilesCard(files: files),
         ],
 
         // 8. Past clarifications (Q/A).
         if (t.revisions.isNotEmpty) ...[
-          const SizedBox(height: 8),
+          AppSpacing.vSm,
           _RevisionsCard(task: t),
         ],
 
         // 9. Activity — completion deliverables + mid-work progress updates
         //    (Sprint J.2). Mirrors the desktop Section C.
         if (completionAttachments.isNotEmpty || updateAttachments.isNotEmpty) ...[
-          const SizedBox(height: 8),
+          AppSpacing.vSm,
           _ActivityCard(
             completion: completionAttachments,
             updates: updateAttachments,
@@ -351,7 +337,7 @@ class _TaskDetailBodyState extends ConsumerState<_TaskDetailBody> {
 
         // 10. Collapsible timeline — last + closed by default so it doesn't
         //     crowd the page on entry.
-        const SizedBox(height: 8),
+        AppSpacing.vSm,
         _TimelineCard(task: t),
       ],
     );
@@ -427,7 +413,7 @@ class _TaskDetailBodyState extends ConsumerState<_TaskDetailBody> {
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: AppRadius.sheetTop,
       ),
       builder: (ctx) {
         return Padding(
@@ -444,14 +430,14 @@ class _TaskDetailBodyState extends ConsumerState<_TaskDetailBody> {
                     style: TextStyle(
                         fontSize: 17, fontWeight: FontWeight.w700,),),
               ],),
-              const SizedBox(height: 4),
+              AppSpacing.vXs,
               const Text(
                 'Acknowledge that you got the deliverable. Add a quick note '
                 "if you want (e.g. \"sent to client\") — it'll appear in the "
                 'chat card. Approve/Reject becomes available right after.',
                 style: TextStyle(fontSize: 12.5, color: AppColors.ink3),
               ),
-              const SizedBox(height: 12),
+              AppSpacing.vMd,
               TextField(
                 controller: ctrl,
                 maxLines: 3,
@@ -461,7 +447,7 @@ class _TaskDetailBodyState extends ConsumerState<_TaskDetailBody> {
                   hintText: 'Optional note…',
                 ),
               ),
-              const SizedBox(height: 12),
+              AppSpacing.vMd,
               FilledButton(
                 onPressed: () => Navigator.pop(
                     ctx, (confirmed: true, note: ctrl.text.trim()),),
@@ -498,7 +484,7 @@ class _TaskDetailBodyState extends ConsumerState<_TaskDetailBody> {
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: AppRadius.sheetTop,
       ),
       builder: (ctx) {
         return Padding(
@@ -515,13 +501,13 @@ class _TaskDetailBodyState extends ConsumerState<_TaskDetailBody> {
                     style: TextStyle(
                         fontSize: 17, fontWeight: FontWeight.w700,),),
               ],),
-              const SizedBox(height: 4),
+              AppSpacing.vXs,
               const Text(
                 'Tell the assignee what needs to change so they can fix '
                 'and resubmit.',
                 style: TextStyle(fontSize: 12.5, color: AppColors.ink3),
               ),
-              const SizedBox(height: 12),
+              AppSpacing.vMd,
               TextField(
                 controller: ctrl,
                 maxLines: 4,
@@ -531,7 +517,7 @@ class _TaskDetailBodyState extends ConsumerState<_TaskDetailBody> {
                   hintText: 'Reason for rejection…',
                 ),
               ),
-              const SizedBox(height: 12),
+              AppSpacing.vMd,
               FilledButton(
                 onPressed: () {
                   final t = ctrl.text.trim();
@@ -618,7 +604,7 @@ class _CompleteTaskSheet extends StatefulWidget {
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: AppRadius.sheetTop,
       ),
       builder: (_) => _CompleteTaskSheet(taskTitle: taskTitle),
     );
@@ -723,7 +709,7 @@ class _CompleteTaskSheetState extends State<_CompleteTaskSheet> {
                       padding: const EdgeInsets.symmetric(vertical: 12),),
                 ),
               ),
-              const SizedBox(width: 8),
+              AppSpacing.hSm,
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: _pickFiles,
@@ -771,7 +757,7 @@ class _CompleteTaskSheetState extends State<_CompleteTaskSheet> {
               ),
 
             // ── Links ──
-            const SizedBox(height: 12),
+            AppSpacing.vMd,
             Row(children: [
               Expanded(
                 child: TextField(
@@ -786,7 +772,7 @@ class _CompleteTaskSheetState extends State<_CompleteTaskSheet> {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              AppSpacing.hSm,
               FilledButton.icon(
                 onPressed: _addLink,
                 style: FilledButton.styleFrom(
@@ -823,7 +809,7 @@ class _CompleteTaskSheetState extends State<_CompleteTaskSheet> {
               ),
 
             // ── Action button ──
-            const SizedBox(height: 16),
+            AppSpacing.vLg,
             FilledButton.icon(
               onPressed: () => Navigator.pop(
                 context,
@@ -882,7 +868,7 @@ class _ClarificationSheet extends StatefulWidget {
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: AppRadius.sheetTop,
       ),
       builder: (_) => _ClarificationSheet(
         kind: kind,
@@ -966,12 +952,12 @@ class _ClarificationSheetState extends State<_ClarificationSheet> {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 8),
+            AppSpacing.vSm,
             Container(
               padding: const EdgeInsets.fromLTRB(4, 4, 10, 4),
               decoration: BoxDecoration(
                 color: AppColors.appBg,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: AppRadius.rLg,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -1002,12 +988,12 @@ class _ClarificationSheetState extends State<_ClarificationSheet> {
             ),
             if (widget.question != null &&
                 widget.question!.trim().isNotEmpty) ...[
-              const SizedBox(height: 12),
+              AppSpacing.vMd,
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFEF3C7),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: AppRadius.rSm,
                   border: Border.all(color: const Color(0xFFFCD34D)),
                 ),
                 child: Column(
@@ -1021,7 +1007,7 @@ class _ClarificationSheetState extends State<_ClarificationSheet> {
                           fontWeight: FontWeight.w700,
                           color: Color(0xFFB45309),),
                     ),
-                    const SizedBox(height: 4),
+                    AppSpacing.vXs,
                     Text(
                       widget.question!.trim(),
                       style: const TextStyle(
@@ -1043,7 +1029,7 @@ class _ClarificationSheetState extends State<_ClarificationSheet> {
                 contentPadding: const EdgeInsets.all(10),
               ),
             ),
-            const SizedBox(height: 16),
+            AppSpacing.vLg,
             FilledButton.icon(
               style: FilledButton.styleFrom(
                 backgroundColor: _accent,
@@ -1153,7 +1139,7 @@ class _StatusPill extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: s.bg,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: AppRadius.rSm,
         border: Border.all(color: s.fg.withValues(alpha: 0.25)),
       ),
       child: Row(
@@ -1171,21 +1157,9 @@ class _StatusPill extends StatelessWidget {
             ),
           ),
           if (task.priority != null && task.priority != 'medium')
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: _priorityColor(task.priority!).withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                _priorityLabel(task.priority!),
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: _priorityColor(task.priority!),
-                ),
-              ),
+            StatusPill(
+              _priorityLabel(task.priority!),
+              color: _priorityColor(task.priority!),
             ),
         ],
       ),
@@ -1221,7 +1195,7 @@ class _HeaderV2 extends StatelessWidget {
         children: [
           if (task.brand?.name != null)
             _BrandBadge(name: task.brand!.name, color: task.brand?.primaryColor),
-          if (task.brand?.name != null) const SizedBox(height: 8),
+          if (task.brand?.name != null) AppSpacing.vSm,
           Text(
             task.title,
             textDirection: detectBidiDirection(task.title),
@@ -1338,13 +1312,13 @@ class _DueChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadius.rMd,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.event, size: 12, color: fg),
-          const SizedBox(width: 4),
+          AppSpacing.hXs,
           Text(
             label,
             style: TextStyle(
@@ -1388,7 +1362,7 @@ class _PersonChip extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(3, 3, 8, 3),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.rLg,
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
@@ -1460,7 +1434,7 @@ class _DescriptionCardState extends State<_DescriptionCard> {
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          AppSpacing.vXs,
           Text(
             shown,
             textDirection: detectBidiDirection(shown),
@@ -1506,7 +1480,7 @@ class _LinksCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _SectionTitle('Links'),
-          const SizedBox(height: 8),
+          AppSpacing.vSm,
           Wrap(
             spacing: 6,
             runSpacing: 6,
@@ -1548,7 +1522,7 @@ class _LinkChip extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.arenaBlueLight,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: AppRadius.rLg,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1565,7 +1539,7 @@ class _LinkChip extends StatelessWidget {
                 children: [
                   const Icon(Icons.link,
                       size: 14, color: AppColors.arenaBlue,),
-                  const SizedBox(width: 4),
+                  AppSpacing.hXs,
                   Text(
                     label,
                     style: const TextStyle(
@@ -1612,24 +1586,24 @@ class _ImagesCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _SectionTitle('Images (${images.length})'),
-          const SizedBox(height: 8),
+          AppSpacing.vSm,
           SizedBox(
             height: 110,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: images.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              separatorBuilder: (_, __) => AppSpacing.hSm,
               itemBuilder: (ctx, i) {
                 final att = images[i];
                 return InkWell(
                   onTap: () => _openFullscreen(context, i),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: AppRadius.rSm,
                   child: AuthedNetworkImage(
                     url: att.url,
                     width: 110,
                     height: 110,
                     fit: BoxFit.cover,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: AppRadius.rSm,
                   ),
                 );
               },
@@ -1772,7 +1746,7 @@ class _FilesCard extends ConsumerWidget {
                 height: 36,
                 decoration: BoxDecoration(
                   color: AppColors.arenaBlue,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: AppRadius.rSm,
                 ),
                 child:
                     Icon(_iconFor(f.mimeType), size: 18, color: Colors.white),
@@ -1918,7 +1892,7 @@ class _ActivityCard extends ConsumerWidget {
           child: AuthedNetworkImage(
             url: a.url,
             fit: BoxFit.cover,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: AppRadius.rSm,
           ),
         );
       },
@@ -1941,7 +1915,7 @@ class _ActivityCard extends ConsumerWidget {
               width: 32, height: 32,
               decoration: BoxDecoration(
                 color: accent,
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: AppRadius.rXs,
               ),
               child: const Icon(Icons.insert_drive_file_outlined,
                   size: 16, color: Colors.white,),
@@ -2015,7 +1989,7 @@ class _ActivityCard extends ConsumerWidget {
 
           // ── Mid-work updates ──
           if (updates.isNotEmpty) ...[
-            if (completion.isNotEmpty) const SizedBox(height: 12),
+            if (completion.isNotEmpty) AppSpacing.vMd,
             _subhead('Progress updates', AppColors.arenaBlue, updates.length),
             if (updateImages.isNotEmpty) ...[
               _imageGrid(context, ref, updateImages),
@@ -2130,7 +2104,7 @@ class _TimelineCardState extends State<_TimelineCard> {
         children: [
           InkWell(
             onTap: () => setState(() => _expanded = !_expanded),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: AppRadius.rSm,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(
@@ -2242,7 +2216,7 @@ class _RevisionsCard extends StatelessWidget {
                     horizontal: 8, vertical: 2,),
                 decoration: BoxDecoration(
                   color: AppColors.arenaBlueLight,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: AppRadius.rSm,
                 ),
                 child: Text(
                   '${task.revisions.length} cycle${task.revisions.length == 1 ? '' : 's'}',
@@ -2261,7 +2235,7 @@ class _RevisionsCard extends StatelessWidget {
               revision: task.revisions[i],
               cycleNumber: i + 1,
             ),
-            if (i < task.revisions.length - 1) const SizedBox(height: 12),
+            if (i < task.revisions.length - 1) AppSpacing.vMd,
           ],
         ],
       ),
@@ -2282,7 +2256,7 @@ class _RevisionBlock extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: AppRadius.rSm,
         border: Border.all(color: AppColors.ink3.withValues(alpha: 0.15)),
       ),
       child: Column(
@@ -2404,7 +2378,7 @@ class _QaRow extends StatelessWidget {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: accent.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: AppRadius.rXs,
             ),
             child: Text(
               kind,
@@ -2415,7 +2389,7 @@ class _QaRow extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          AppSpacing.hSm,
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2638,7 +2612,7 @@ class _Card extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppRadius.rMd,
           boxShadow: const [
             BoxShadow(
               color: Color(0x14000000),
@@ -2686,13 +2660,13 @@ class _MiniChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: AppRadius.rSm,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 12, color: color),
-            const SizedBox(width: 4),
+            AppSpacing.hXs,
             Text(
               label,
               style: TextStyle(
@@ -2724,7 +2698,7 @@ class _MetaRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(icon, size: 16, color: AppColors.ink3),
-            const SizedBox(width: 8),
+            AppSpacing.hSm,
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2791,7 +2765,7 @@ class _DeliverablesCardState extends ConsumerState<_DeliverablesCard> {
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: AppRadius.sheetTop,
       ),
       builder: (_) => _DeliverSheet(
         taskId: widget.taskId,
@@ -2827,7 +2801,7 @@ class _DeliverablesCardState extends ConsumerState<_DeliverablesCard> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadius.rMd,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2843,13 +2817,13 @@ class _DeliverablesCardState extends ConsumerState<_DeliverablesCard> {
                       color: allDone ? AppColors.greenBorder : AppColors.ink2,),),
             ],
           ),
-          const SizedBox(height: 8),
+          AppSpacing.vSm,
           ClipRRect(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: AppRadius.rXs,
             child: LinearProgressIndicator(
               value: totReq > 0 ? totDone / totReq : 0,
               minHeight: 6,
-              backgroundColor: const Color(0xFFE5E7EB),
+              backgroundColor: AppColors.border,
               valueColor: AlwaysStoppedAnimation(
                   allDone ? AppColors.greenBorder : AppColors.arenaBlue,),
             ),
@@ -2857,7 +2831,7 @@ class _DeliverablesCardState extends ConsumerState<_DeliverablesCard> {
           const SizedBox(height: 10),
           for (final d in items) ...[
             _row(d),
-            const SizedBox(height: 8),
+            AppSpacing.vSm,
           ],
         ],
       ),
@@ -2874,8 +2848,8 @@ class _DeliverablesCardState extends ConsumerState<_DeliverablesCard> {
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: const Color(0xFFF9FAFB),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        borderRadius: AppRadius.rSm,
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2890,7 +2864,7 @@ class _DeliverablesCardState extends ConsumerState<_DeliverablesCard> {
                   color: complete
                       ? AppColors.greenBorder
                       : Colors.grey.shade400,),
-              const SizedBox(width: 8),
+              AppSpacing.hSm,
               Expanded(
                 child: Text(_label(d),
                     textDirection: detectBidiDirection(_label(d)),
@@ -2911,14 +2885,14 @@ class _DeliverablesCardState extends ConsumerState<_DeliverablesCard> {
               child: LinearProgressIndicator(
                 value: (done / qty).clamp(0.0, 1.0),
                 minHeight: 4,
-                backgroundColor: const Color(0xFFE5E7EB),
+                backgroundColor: AppColors.border,
                 valueColor: AlwaysStoppedAnimation(
                     complete ? AppColors.greenBorder : AppColors.arenaBlue,),
               ),
             ),
           ],
           if (delivItems.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            AppSpacing.vSm,
             Wrap(
               spacing: 6,
               runSpacing: 6,
@@ -2937,9 +2911,9 @@ class _DeliverablesCardState extends ConsumerState<_DeliverablesCard> {
                             horizontal: 8, vertical: 4,),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: AppRadius.rSm,
                           border:
-                              Border.all(color: const Color(0xFFE5E7EB)),
+                              Border.all(color: AppColors.border),
                         ),
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
                           Icon(
@@ -2948,7 +2922,7 @@ class _DeliverablesCardState extends ConsumerState<_DeliverablesCard> {
                                   : Icons.insert_drive_file_outlined,
                               size: 13,
                               color: AppColors.arenaBlue,),
-                          const SizedBox(width: 4),
+                          AppSpacing.hXs,
                           Text(
                               isLink
                                   ? (units > 1 ? 'Link ×$units' : 'Link')
@@ -2965,7 +2939,7 @@ class _DeliverablesCardState extends ConsumerState<_DeliverablesCard> {
             ),
           ],
           if (widget.canEdit && !complete) ...[
-            const SizedBox(height: 8),
+            AppSpacing.vSm,
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
@@ -3131,7 +3105,7 @@ class _DeliverSheetState extends ConsumerState<_DeliverSheet> {
                   label: const Text('Photos'),
                 ),
               ),
-              const SizedBox(width: 8),
+              AppSpacing.hSm,
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: _saving ? null : _pickFiles,
@@ -3160,7 +3134,7 @@ class _DeliverSheetState extends ConsumerState<_DeliverSheet> {
                 ),
               ),
 
-            const SizedBox(height: 12),
+            AppSpacing.vMd,
             const Text('Or a link (Drive / Behance / …)',
                 style: TextStyle(fontSize: 12.5, color: AppColors.ink3),),
             const SizedBox(height: 6),
@@ -3180,7 +3154,7 @@ class _DeliverSheetState extends ConsumerState<_DeliverSheet> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                AppSpacing.hSm,
                 SizedBox(
                   width: 70,
                   child: TextField(
@@ -3210,24 +3184,24 @@ class _DeliverSheetState extends ConsumerState<_DeliverSheet> {
               ),
 
             if (_saving) ...[
-              const SizedBox(height: 12),
+              AppSpacing.vMd,
               ClipRRect(
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: AppRadius.rXs,
                 child: LinearProgressIndicator(
                   value: _pct == 0 ? null : _pct,
                   minHeight: 8,
-                  backgroundColor: const Color(0xFFE5E7EB),
+                  backgroundColor: AppColors.border,
                   valueColor:
                       const AlwaysStoppedAnimation(AppColors.arenaBlue),
                 ),
               ),
-              const SizedBox(height: 4),
+              AppSpacing.vXs,
               Text('Uploading… ${(_pct * 100).round()}%',
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 11.5, color: AppColors.ink3),),
             ],
 
-            const SizedBox(height: 16),
+            AppSpacing.vLg,
             FilledButton.icon(
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.arenaBlue,
@@ -3254,13 +3228,13 @@ class _StepBtn extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: AppRadius.rSm,
       child: Container(
         width: 30,
         height: 30,
         decoration: BoxDecoration(
-          border: Border.all(color: const Color(0xFFE5E7EB)),
-          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.border),
+          borderRadius: AppRadius.rSm,
         ),
         child: Icon(icon,
             size: 18,
@@ -3298,7 +3272,7 @@ class _ChainCard extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _SectionTitle('🔗 Project chain'),
-          const SizedBox(height: 8),
+          AppSpacing.vSm,
           chainAsync.when(
             loading: () => const Padding(
               padding: EdgeInsets.symmetric(vertical: 10),
@@ -3365,7 +3339,7 @@ class _ChainRow extends StatelessWidget {
           ? null
           : () => Navigator.of(context).push(MaterialPageRoute(
               builder: (_) => TaskDetailScreen(taskId: stage.id),),),
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: AppRadius.rSm,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 3),
         child: Row(
@@ -3385,7 +3359,7 @@ class _ChainRow extends StatelessWidget {
                           fontWeight: FontWeight.bold,),),
                 ),
                 if (!isLast)
-                  Container(width: 1, height: 26, color: const Color(0xFFE5E7EB)),
+                  Container(width: 1, height: 26, color: AppColors.border),
               ],
             ),
             const SizedBox(width: 10),
@@ -3397,7 +3371,7 @@ class _ChainRow extends StatelessWidget {
                 decoration: isCurrent
                     ? BoxDecoration(
                         color: AppColors.arenaBlueLight,
-                        borderRadius: BorderRadius.circular(8),)
+                        borderRadius: AppRadius.rSm,)
                     : null,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -3424,7 +3398,7 @@ class _ChainRow extends StatelessWidget {
                               horizontal: 8, vertical: 2,),
                           decoration: BoxDecoration(
                               color: color.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(20),),
+                              borderRadius: AppRadius.rLg,),
                           child: Text(stage.statusLabel ?? stage.status,
                               style: TextStyle(
                                   fontSize: 10.5,
@@ -3466,9 +3440,9 @@ class _HandoffButton extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             crossAxisAlignment: CrossAxisAlignment.center,
-            children: const [
+            children: [
               Icon(Icons.alt_route, size: 18, color: AppColors.arenaBlue),
               SizedBox(width: 6),
               Expanded(
@@ -3476,13 +3450,13 @@ class _HandoffButton extends ConsumerWidget {
                     style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.ink)),
+                        color: AppColors.ink,),),
               ),
             ],
           ),
           const SizedBox(height: 3),
           const Text('Create the next task with the same deliverables',
-              style: TextStyle(fontSize: 11.5, color: AppColors.ink3)),
+              style: TextStyle(fontSize: 11.5, color: AppColors.ink3),),
           const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
@@ -3495,7 +3469,7 @@ class _HandoffButton extends ConsumerWidget {
                   isScrollControlled: true,
                   backgroundColor: Colors.white,
                   shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                    borderRadius: AppRadius.sheetTop,
                   ),
                   builder: (_) => _HandoffSheet(task: task),
                 );
@@ -3629,10 +3603,10 @@ class _HandoffSheetState extends ConsumerState<_HandoffSheet> {
                     borderRadius: BorderRadius.circular(2),),
               ),
             ),
-            const SizedBox(height: 12),
+            AppSpacing.vMd,
             const Text('↪️ Hand off to next stage',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),),
-            const SizedBox(height: 12),
+            AppSpacing.vMd,
 
             // Assignee
             const Text('Hand off to',
@@ -3640,7 +3614,7 @@ class _HandoffSheetState extends ConsumerState<_HandoffSheet> {
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: AppColors.ink3,),),
-            const SizedBox(height: 4),
+            AppSpacing.vXs,
             if (_assigneeName != null)
               Align(
                 alignment: Alignment.centerLeft,
@@ -3709,7 +3683,7 @@ class _HandoffSheetState extends ConsumerState<_HandoffSheet> {
                   labelText: 'Short brief (optional)',
                   border: OutlineInputBorder(),),
             ),
-            const SizedBox(height: 12),
+            AppSpacing.vMd,
 
             // Deliverables for this stage
             const Text('🎯 Deliverables for this stage (optional)',
@@ -3767,7 +3741,7 @@ class _HandoffSheetState extends ConsumerState<_HandoffSheet> {
                   ],
                 ),
               ),
-            const SizedBox(height: 12),
+            AppSpacing.vMd,
 
             // Priority
             const Text('Priority',
@@ -3775,7 +3749,7 @@ class _HandoffSheetState extends ConsumerState<_HandoffSheet> {
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: AppColors.ink3,),),
-            const SizedBox(height: 4),
+            AppSpacing.vXs,
             Wrap(
               spacing: 6,
               children: [
@@ -3796,7 +3770,7 @@ class _HandoffSheetState extends ConsumerState<_HandoffSheet> {
               title: const Text('Attach this stage’s deliverables as reference',
                   style: TextStyle(fontSize: 13),),
             ),
-            const SizedBox(height: 4),
+            AppSpacing.vXs,
             ElevatedButton(
               onPressed: _saving ? null : _submit,
               child: Text(_saving ? '...' : '↪️ Create next stage'),

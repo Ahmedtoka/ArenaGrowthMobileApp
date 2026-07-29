@@ -31,7 +31,6 @@ class TasksListTab extends ConsumerWidget {
             child: tasksAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => _ErrorView(
-                error: e,
                 onRetry: () => ref.invalidate(tasksListProvider),
               ),
               data: (result) {
@@ -290,7 +289,7 @@ class _TabChip extends StatelessWidget {
                       const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                   decoration: BoxDecoration(
                     color: selected ? Colors.white : AppColors.arenaBlue,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: AppRadius.rSm,
                   ),
                   child: Text(
                     '$badge',
@@ -344,7 +343,7 @@ class _PillChip extends StatelessWidget {
                       color: fg,
                       fontSize: 12.5,
                       fontWeight:
-                          selected ? FontWeight.w700 : FontWeight.w500)),
+                          selected ? FontWeight.w700 : FontWeight.w500,),),
             ],
           ),
         ),
@@ -392,7 +391,7 @@ class _PickerSheet extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: Text(title,
                   style: const TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.w800)),
+                      fontSize: 15, fontWeight: FontWeight.w800,),),
             ),
           ),
           Flexible(
@@ -404,7 +403,7 @@ class _PickerSheet extends StatelessWidget {
                 return ListTile(
                   dense: true,
                   title: Text(it.label,
-                      textDirection: detectBidiDirection(it.label)),
+                      textDirection: detectBidiDirection(it.label),),
                   onTap: () {
                     onPick(it.id);
                     Navigator.of(ctx).pop();
@@ -593,7 +592,7 @@ class _TaskCard extends StatelessWidget {
                         runSpacing: 6,
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          _StatusPill(spec: statusSpec),
+                          StatusPill(statusSpec.label, color: statusSpec.color),
                           if (task.assignee != null)
                             Row(
                               mainAxisSize: MainAxisSize.min,
@@ -659,25 +658,20 @@ class _TaskCard extends StatelessWidget {
   }
 
   _StatusSpec _statusSpec(String s) => switch (s) {
-        TaskStatus.pending => const _StatusSpec(
-            'Pending', Color(0xFFEEF2F7), AppColors.ink2,),
-        TaskStatus.inProgress => const _StatusSpec(
-            'In Progress', AppColors.arenaBlueLight, AppColors.arenaBlue,),
-        TaskStatus.done => const _StatusSpec(
-            'Done', AppColors.greenBg, AppColors.greenBorder,),
-        TaskStatus.approved => const _StatusSpec(
-            'Approved', AppColors.greenBg, AppColors.greenBorder,),
-        'received' => const _StatusSpec(
-            'Received', Color(0xFFEDE9FE), Color(0xFF6D28D9),),
-        TaskStatus.awaitingClarification => const _StatusSpec(
-            'Awaiting Clarification', Color(0xFFFEF3C7), Color(0xFFB45309),),
-        TaskStatus.resumed => const _StatusSpec(
-            'Resumed', AppColors.arenaBlueLight, AppColors.arenaBlue,),
-        TaskStatus.archived =>
-          const _StatusSpec('Archived', Color(0xFFEEF2F7), AppColors.ink3),
+        TaskStatus.pending => const _StatusSpec('Pending', AppColors.ink2),
+        TaskStatus.inProgress =>
+          const _StatusSpec('In Progress', AppColors.arenaBlue),
+        TaskStatus.done => const _StatusSpec('Done', AppColors.greenBorder),
+        TaskStatus.approved =>
+          const _StatusSpec('Approved', AppColors.greenBorder),
+        'received' => const _StatusSpec('Received', Color(0xFF6D28D9)),
+        TaskStatus.awaitingClarification =>
+          const _StatusSpec('Awaiting Clarification', Color(0xFFB45309)),
+        TaskStatus.resumed => const _StatusSpec('Resumed', AppColors.arenaBlue),
+        TaskStatus.archived => const _StatusSpec('Archived', AppColors.ink3),
         TaskStatus.cancelled =>
-          const _StatusSpec('Cancelled', AppColors.redBg, AppColors.arenaRed),
-        _ => _StatusSpec(s, const Color(0xFFEEF2F7), AppColors.ink2),
+          const _StatusSpec('Cancelled', AppColors.arenaRed),
+        _ => _StatusSpec(s, AppColors.ink2),
       };
 
   _PrioritySpec? _prioritySpec(String? p) => switch (p) {
@@ -690,34 +684,14 @@ class _TaskCard extends StatelessWidget {
 
 class _StatusSpec {
   final String label;
-  final Color bg;
-  final Color fg;
-  const _StatusSpec(this.label, this.bg, this.fg);
+  final Color color;
+  const _StatusSpec(this.label, this.color);
 }
 
 class _PrioritySpec {
   final String label;
   final Color color;
   const _PrioritySpec(this.label, this.color);
-}
-
-class _StatusPill extends StatelessWidget {
-  final _StatusSpec spec;
-  const _StatusPill({required this.spec});
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: spec.bg,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Text(
-          spec.label,
-          style: TextStyle(
-              fontSize: 11, fontWeight: FontWeight.w600, color: spec.fg,),
-        ),
-      );
 }
 
 class _PriorityBadge extends StatelessWidget {
@@ -729,7 +703,7 @@ class _PriorityBadge extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
           color: spec.color,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: AppRadius.rSm,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -790,58 +764,25 @@ class _EmptyState extends StatelessWidget {
   Widget build(BuildContext context) => ListView(
         children: [
           const SizedBox(height: 100),
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  const Icon(Icons.task_alt, size: 56, color: Colors.grey),
-                  const SizedBox(height: 12),
-                  Text(
-                    'No tasks in "$label"',
-                    style: const TextStyle(color: AppColors.ink3),
-                  ),
-                ],
-              ),
-            ),
+          AppEmptyState(
+            icon: Icons.task_alt,
+            text: 'No tasks in "$label"',
           ),
         ],
       );
 }
 
 class _ErrorView extends StatelessWidget {
-  final Object error;
   final VoidCallback onRetry;
-  const _ErrorView({required this.error, required this.onRetry});
+  const _ErrorView({required this.onRetry});
 
   @override
   Widget build(BuildContext context) => ListView(
         children: [
           const SizedBox(height: 100),
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              children: [
-                const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                const SizedBox(height: 12),
-                Text(
-                  'Could not load tasks',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  error.toString(),
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: 16),
-                FilledButton.icon(
-                  onPressed: onRetry,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Retry'),
-                ),
-              ],
-            ),
+          AppErrorState(
+            text: 'Could not load tasks.\nPull to retry.',
+            onRetry: onRetry,
           ),
         ],
       );

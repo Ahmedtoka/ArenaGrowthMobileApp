@@ -23,13 +23,13 @@ class SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-          AppSpacing.xs, AppSpacing.md, AppSpacing.xs, AppSpacing.sm),
+          AppSpacing.xs, AppSpacing.md, AppSpacing.xs, AppSpacing.sm,),
       child: Row(
         children: [
           Text(
             title,
             style: TextStyle(
-                fontSize: 13.5, fontWeight: FontWeight.w800, color: color),
+                fontSize: 13.5, fontWeight: FontWeight.w800, color: color,),
           ),
           if (count != null && count! > 0) ...[
             AppSpacing.hSm,
@@ -41,7 +41,7 @@ class SectionHeader extends StatelessWidget {
               ),
               child: Text('$count',
                   style: TextStyle(
-                      fontSize: 11, fontWeight: FontWeight.w800, color: color)),
+                      fontSize: 11, fontWeight: FontWeight.w800, color: color,),),
             ),
           ],
           const Spacer(),

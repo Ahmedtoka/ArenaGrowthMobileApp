@@ -4,7 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/providers/app_providers.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/utils/text_direction_util.dart';
+import '../../../../core/widgets/app_card.dart';
+import '../../../../core/widgets/app_states.dart';
 import '../../../../core/widgets/attendance_guard.dart';
 
 /// ─── السبحة — Social tally ────────────────────────────────────────────
@@ -118,9 +121,15 @@ class _SocialTallyScreenState extends ConsumerState<SocialTallyScreen> {
       ),
       body: today.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Failed to load: $e')),
+        error: (_, __) => AppErrorState(
+          onRetry: () {
+            _delta.clear();
+            ref.invalidate(socialTodayProvider);
+          },
+        ),
         data: (brands) => ListView.separated(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.xl,),
           itemCount: brands.length + 1,
           separatorBuilder: (_, __) => const SizedBox(height: 10),
           itemBuilder: (context, i) {
@@ -139,7 +148,7 @@ class _SocialTallyScreenState extends ConsumerState<SocialTallyScreen> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: AppRadius.rMd,
                 ),
                 child: Row(
                   children: [
@@ -149,7 +158,7 @@ class _SocialTallyScreenState extends ConsumerState<SocialTallyScreen> {
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: AppRadius.rMd,
                       ),
                       child: Text(
                         '$grandTotal',
@@ -160,7 +169,7 @@ class _SocialTallyScreenState extends ConsumerState<SocialTallyScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    AppSpacing.hMd,
                     const Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -196,13 +205,8 @@ class _SocialTallyScreenState extends ConsumerState<SocialTallyScreen> {
                 for (final k in kinds) _countFor(b, p.$1, k.$1),
             ].fold<int>(0, (a, c) => a + c);
 
-            return Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
-              ),
-              padding: const EdgeInsets.all(12),
+            return AppCard(
+              margin: EdgeInsets.zero,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -211,7 +215,7 @@ class _SocialTallyScreenState extends ConsumerState<SocialTallyScreen> {
                     children: [
                       if (b.logoUrl != null && b.logoUrl!.isNotEmpty)
                         ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: AppRadius.rSm,
                           child: Image.network(b.logoUrl!,
                               width: 34, height: 34, fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) =>
@@ -233,8 +237,8 @@ class _SocialTallyScreenState extends ConsumerState<SocialTallyScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 2,),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFD1FAE5),
-                            borderRadius: BorderRadius.circular(999),
+                            color: AppColors.greenBg,
+                            borderRadius: AppRadius.rPill,
                           ),
                           child: Text('$brandTotal today',
                               style: const TextStyle(
@@ -260,7 +264,7 @@ class _SocialTallyScreenState extends ConsumerState<SocialTallyScreen> {
                                 color: selected == p.$1
                                     ? p.$3
                                     : const Color(0xFFF1F5F9),
-                                borderRadius: BorderRadius.circular(999),
+                                borderRadius: AppRadius.rPill,
                               ),
                               alignment: Alignment.center,
                               child: Text(
@@ -294,7 +298,7 @@ class _SocialTallyScreenState extends ConsumerState<SocialTallyScreen> {
                             onLongPress: () => _tap(b, k.$1, undo: true),
                           ),
                         ),
-                        if (k != kinds.last) const SizedBox(width: 8),
+                        if (k != kinds.last) AppSpacing.hSm,
                       ],
                     ],
                   ),
@@ -313,7 +317,7 @@ class _SocialTallyScreenState extends ConsumerState<SocialTallyScreen> {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: _hex(b.color) ?? AppColors.teal,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: AppRadius.rSm,
         ),
         child: Text(
           b.name.isNotEmpty ? b.name[0].toUpperCase() : '?',
@@ -349,19 +353,19 @@ class _CounterButton extends StatelessWidget {
     final active = count > 0;
     return Material(
       color: active ? const Color(0xFFE7F8F5) : const Color(0xFFF8FAFC),
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: AppRadius.rMd,
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadius.rMd,
         onTap: onTap,
         onLongPress: onLongPress,
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: AppRadius.rMd,
             border: Border.all(
                 color: active
                     ? const Color(0xFF99E6D8)
-                    : const Color(0xFFE5E7EB),),
+                    : AppColors.border,),
           ),
           child: Column(
             children: [

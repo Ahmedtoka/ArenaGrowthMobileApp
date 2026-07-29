@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_dimens.dart';
+import '../../../core/widgets/app_states.dart';
 import '../data/shoot_models.dart';
 import 'add_shoot_sheet.dart';
 import 'shoot_detail_sheet.dart';
@@ -79,7 +81,7 @@ class _ShootsCalendarScreenState extends ConsumerState<ShootsCalendarScreen> {
             calendar: _calendar,
             onChanged: (v) => setState(() => _calendar = v),
           ),
-          const SizedBox(width: 8),
+          AppSpacing.hSm,
         ],
       ),
       floatingActionButton: async.valueOrNull?.canManage == true
@@ -94,10 +96,13 @@ class _ShootsCalendarScreenState extends ConsumerState<ShootsCalendarScreen> {
         onRefresh: () async => ref.invalidate(shootsProvider),
         child: async.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, __) => ListView(children: const [
-            SizedBox(height: 120),
-            Center(child: Text('Couldn’t load the calendar. Pull to retry.')),
-          ]),
+          error: (_, __) => ListView(children: [
+            const SizedBox(height: 80),
+            AppErrorState(
+              text: 'Couldn’t load the calendar. Pull to retry.',
+              onRetry: () => ref.invalidate(shootsProvider),
+            ),
+          ],),
           data: (res) => _calendar
               ? _calendarView(res.shoots, res.canManage)
               : _listView(res.shoots, res.canManage),
@@ -122,7 +127,8 @@ class _ShootsCalendarScreenState extends ConsumerState<ShootsCalendarScreen> {
       children: [
         // Month nav
         Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md, AppSpacing.md, AppSpacing.md, AppSpacing.xs,),
           child: Row(
             children: [
               IconButton(
@@ -145,22 +151,22 @@ class _ShootsCalendarScreenState extends ConsumerState<ShootsCalendarScreen> {
         ),
         // Weekday header
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
           child: Row(
             children: _weekHeads
                 .map((w) => Expanded(
                       child: Center(
                         child: Text(w,
-                            style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.ink3)),
+                            style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.ink3),),
                       ),
-                    ))
+                    ),)
                 .toList(),
           ),
         ),
-        const SizedBox(height: 4),
+        AppSpacing.vXs,
         // Grid
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
           child: GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -185,7 +191,7 @@ class _ShootsCalendarScreenState extends ConsumerState<ShootsCalendarScreen> {
                 child: Container(
                   decoration: BoxDecoration(
                     color: isSel ? AppColors.arenaBlue : (isToday ? AppColors.arenaBlueLight : Colors.white),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: AppRadius.rSm,
                     border: Border.all(
                       color: isToday && !isSel ? AppColors.arenaBlue : const Color(0xFFE8ECF2),
                     ),
@@ -229,7 +235,8 @@ class _ShootsCalendarScreenState extends ConsumerState<ShootsCalendarScreen> {
         const Divider(height: 24),
         // Selected day's shoots
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.sm,),
           child: Text(
             _selected == null
                 ? 'Pick a day'
@@ -238,9 +245,9 @@ class _ShootsCalendarScreenState extends ConsumerState<ShootsCalendarScreen> {
           ),
         ),
         if (dayShoots.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
-            child: Center(child: Text('No shoots on this day.', style: TextStyle(color: AppColors.ink3))),
+          const AppEmptyState(
+            icon: Icons.event_busy_outlined,
+            text: 'No shoots on this day.',
           )
         else
           ...dayShoots.map((s) => _card(s, canManage)),
@@ -253,11 +260,12 @@ class _ShootsCalendarScreenState extends ConsumerState<ShootsCalendarScreen> {
     final active = shoots.where((s) => !s.isCancelled).toList();
     if (active.isEmpty) {
       return ListView(children: const [
-        SizedBox(height: 100),
-        Icon(Icons.camera_alt_outlined, size: 56, color: Colors.grey),
-        SizedBox(height: 12),
-        Center(child: Text('No shoots scheduled yet.', style: TextStyle(color: AppColors.ink3))),
-      ]);
+        SizedBox(height: 80),
+        AppEmptyState(
+          icon: Icons.camera_alt_outlined,
+          text: 'No shoots scheduled yet.',
+        ),
+      ],);
     }
     final byDate = <String, List<Shoot>>{};
     for (final s in active) {
@@ -274,17 +282,17 @@ class _ShootsCalendarScreenState extends ConsumerState<ShootsCalendarScreen> {
                 style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w700,
-                    color: _isSameDay(d, DateTime.now()) ? AppColors.arenaBlue : AppColors.ink)),
+                    color: _isSameDay(d, DateTime.now()) ? AppColors.arenaBlue : AppColors.ink,),),
             if (_isSameDay(d, DateTime.now())) ...[
               const SizedBox(width: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
-                decoration: BoxDecoration(color: AppColors.arenaBlue, borderRadius: BorderRadius.circular(8)),
+                decoration: BoxDecoration(color: AppColors.arenaBlue, borderRadius: AppRadius.rSm),
                 child: const Text('TODAY', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800)),
               ),
             ],
-          ]),
-        ));
+          ],),
+        ),);
       }
       for (final s in list) {
         items.add(_card(s, canManage));
@@ -299,21 +307,22 @@ class _ShootsCalendarScreenState extends ConsumerState<ShootsCalendarScreen> {
     final time = _ampm(s.startTime);
     final firsts = s.team.map((m) => m.name.trim().split(' ').first).toList();
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      margin: const EdgeInsets.fromLTRB(
+          AppSpacing.lg, AppSpacing.xs, AppSpacing.lg, AppSpacing.xs,),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadius.rMd,
         border: Border(left: BorderSide(color: c, width: 4)),
         boxShadow: const [BoxShadow(color: Color(0x11000000), blurRadius: 3, offset: Offset(0, 1))],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppRadius.rMd,
           onTap: () =>
               ShootDetailSheet.show(context, shoot: s, canManage: canManage),
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: AppSpacing.card,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -325,12 +334,12 @@ class _ShootsCalendarScreenState extends ConsumerState<ShootsCalendarScreen> {
                               fontSize: 14.5,
                               fontWeight: FontWeight.w700,
                               color: AppColors.ink,
-                              decoration: s.isCancelled ? TextDecoration.lineThrough : null)),
+                              decoration: s.isCancelled ? TextDecoration.lineThrough : null,),),
                     ),
                     if (time.isNotEmpty)
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(color: c.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+                        decoration: BoxDecoration(color: c.withValues(alpha: 0.12), borderRadius: AppRadius.rSm),
                         child: Text(time, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: c)),
                       ),
                   ],
@@ -345,10 +354,10 @@ class _ShootsCalendarScreenState extends ConsumerState<ShootsCalendarScreen> {
                     const Icon(Icons.place_outlined, size: 14, color: AppColors.ink3),
                     const SizedBox(width: 4),
                     Expanded(child: Text(s.locationLabel!, style: const TextStyle(fontSize: 12.5, color: AppColors.ink2))),
-                  ]),
+                  ],),
                 ],
                 if (firsts.isNotEmpty) ...[
-                  const SizedBox(height: 8),
+                  AppSpacing.vSm,
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
@@ -357,9 +366,9 @@ class _ShootsCalendarScreenState extends ConsumerState<ShootsCalendarScreen> {
                       final first = m.name.trim().split(' ').first;
                       return Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(10)),
+                        decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: AppRadius.rSm),
                         child: Text(lead ? '★ $first' : first,
-                            style: const TextStyle(fontSize: 11, color: AppColors.ink2, fontWeight: FontWeight.w600)),
+                            style: const TextStyle(fontSize: 11, color: AppColors.ink2, fontWeight: FontWeight.w600),),
                       );
                     }).toList(),
                   ),
@@ -401,7 +410,7 @@ class _Segment extends StatelessWidget {
                 style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: active ? AppColors.arenaBlue : Colors.white)),
+                    color: active ? AppColors.arenaBlue : Colors.white,),),
           ),
         );
     return Container(
@@ -413,7 +422,7 @@ class _Segment extends StatelessWidget {
       child: Row(children: [
         seg('Calendar', calendar, () => onChanged(true)),
         seg('List', !calendar, () => onChanged(false)),
-      ]),
+      ],),
     );
   }
 }

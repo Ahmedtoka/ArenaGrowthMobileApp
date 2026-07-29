@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/providers/app_providers.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/utils/text_direction_util.dart';
 import '../../../../core/widgets/authed_network_image.dart';
 import '../../../../core/widgets/user_avatar.dart';
@@ -147,7 +148,7 @@ class _SystemCardState extends State<SystemCard> {
                           horizontal: 8, vertical: 2,),
                       decoration: BoxDecoration(
                         color: const Color(0xFFEEF2FF),
-                        borderRadius: BorderRadius.circular(999),
+                        borderRadius: AppRadius.rPill,
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -292,7 +293,7 @@ class _SystemCardState extends State<SystemCard> {
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: const Color(0xFFF7F8FF),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: AppRadius.rSm,
           border: Border.all(color: const Color(0xFFE3E6FF)),
         ),
         child: Column(
@@ -347,7 +348,7 @@ class _SystemCardState extends State<SystemCard> {
                       decoration: BoxDecoration(
                         color:
                             complete ? const Color(0xFFDCFCE7) : Colors.white,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: AppRadius.rSm,
                         border: Border.all(
                             color: complete
                                 ? const Color(0xFF86EFAC)
@@ -850,7 +851,7 @@ class _Assignees extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(3, 3, 10, 3),
                   decoration: BoxDecoration(
                     color: _initialColor(a.name).withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: AppRadius.rLg,
                     border: Border.all(
                       color: _initialColor(a.name).withValues(alpha: 0.3),
                     ),
@@ -930,7 +931,7 @@ class _Recipient extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(3, 3, 10, 3),
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: AppRadius.rLg,
             border: Border.all(color: color.withValues(alpha: 0.3)),
           ),
           child: Row(
@@ -976,12 +977,12 @@ class _LinkChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: _open,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: AppRadius.rLg,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: AppColors.arenaBlueLight,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: AppRadius.rLg,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1193,7 +1194,7 @@ class _Footer extends StatelessWidget {
           if (showOpen)
             InkWell(
               onTap: onOpenTask,
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: AppRadius.rXs,
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 2),
                 child: Row(
@@ -1349,12 +1350,12 @@ class _BodyActions extends StatelessWidget {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: AppRadius.rXs,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
           color: bg,
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: AppRadius.rXs,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1388,8 +1389,8 @@ class _BodyActions extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFFD1FAE5),
-                borderRadius: BorderRadius.circular(6),
+                color: AppColors.greenBg,
+                borderRadius: AppRadius.rXs,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -1431,7 +1432,7 @@ class _BodyActions extends StatelessWidget {
             _btn(
               icon: Icons.close,
               label: 'Reject',
-              bg: const Color(0xFFFEE2E2),
+              bg: AppColors.redBg,
               fg: AppColors.arenaRed,
               onTap: () => onRejectTask!(taskIdForActions!),
             ),
@@ -1478,7 +1479,7 @@ class _TaskCardImageStrip extends StatelessWidget {
           final img = images[i];
           final url = img['url'] as String;
           return ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: AppRadius.rSm,
             child: GestureDetector(
               onTap: () => _openLightbox(context, i),
               child: SizedBox(
@@ -1658,7 +1659,7 @@ class _ApprovedSummary extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: const Color(0xFFF5F3FF), // violet tint — matches the card
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadius.rSm,
         border: Border.all(color: const Color(0xFFDDD6FE)),
       ),
       child: Column(

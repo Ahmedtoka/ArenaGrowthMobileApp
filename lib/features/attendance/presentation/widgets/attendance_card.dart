@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_dimens.dart';
 import '../../data/location_helper.dart';
 import '../../data/models/attendance_snapshot.dart';
 import '../controllers/attendance_controller.dart';
@@ -47,8 +48,8 @@ class _CardBodyState extends ConsumerState<_CardBody> {
 
   // ── Theme ────────────────────────────────────────────────
   Color _color() => switch (widget.snap.status) {
-        AttendanceStatus.active => const Color(0xFF22C55E),
-        AttendanceStatus.breakTime => const Color(0xFFF59E0B),
+        AttendanceStatus.active => AppColors.success,
+        AttendanceStatus.breakTime => AppColors.warning,
         AttendanceStatus.away => const Color(0xFFEAB308),
         AttendanceStatus.off => Colors.grey.shade400,
       };
@@ -151,8 +152,8 @@ class _CardBodyState extends ConsumerState<_CardBody> {
               title: const Row(
                 children: [
                   Icon(Icons.location_off_outlined,
-                      color: Color(0xFFF59E0B), size: 22,),
-                  SizedBox(width: 8),
+                      color: AppColors.warning, size: 22,),
+                  AppSpacing.hSm,
                   Text('Location unavailable'),
                 ],
               ),
@@ -168,7 +169,7 @@ class _CardBodyState extends ConsumerState<_CardBody> {
                 ),
                 FilledButton(
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFFF59E0B),
+                    backgroundColor: AppColors.warning,
                   ),
                   onPressed: () => Navigator.pop(ctx, true),
                   child: const Text('Continue anyway'),
@@ -202,7 +203,7 @@ class _CardBodyState extends ConsumerState<_CardBody> {
         title: const Row(
           children: [
             Icon(Icons.bug_report_outlined, size: 22, color: Color(0xFF7C3AED)),
-            SizedBox(width: 8),
+            AppSpacing.hSm,
             Text('DEV — fake location'),
           ],
         ),
@@ -214,12 +215,12 @@ class _CardBodyState extends ConsumerState<_CardBody> {
               failureReason ?? 'Emulator GPS not delivering fixes.',
               style: const TextStyle(fontSize: 12.5, color: AppColors.ink3),
             ),
-            const SizedBox(height: 8),
+            AppSpacing.vSm,
             const Text(
               'Pick a test scenario:',
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
             ),
-            const SizedBox(height: 8),
+            AppSpacing.vSm,
             _devOption(
               ctx,
               icon: '🏢',
@@ -344,7 +345,7 @@ class _CardBodyState extends ConsumerState<_CardBody> {
       // Got a real fix — wipe the silence flag so attendance actions use it.
       ref.read(acceptedNoLocationProvider.notifier).state = false;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        backgroundColor: const Color(0xFF22C55E),
+        backgroundColor: AppColors.success,
         content: Text(
           'GPS works ✓  lat ${fix.lat.toStringAsFixed(5)}, lng ${fix.lng.toStringAsFixed(5)}',
         ),
@@ -376,7 +377,7 @@ class _CardBodyState extends ConsumerState<_CardBody> {
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+        borderRadius: AppRadius.sheetTop,
       ),
       builder: (ctx) => Padding(
         padding: EdgeInsets.only(
@@ -388,10 +389,10 @@ class _CardBodyState extends ConsumerState<_CardBody> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('Why are you going away?',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 4),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),),
+            AppSpacing.vXs,
             const Text('A reason is required and recorded.',
-                style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+                style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),),
             const SizedBox(height: 14),
             Wrap(
               spacing: 8,
@@ -425,7 +426,7 @@ class _CardBodyState extends ConsumerState<_CardBody> {
                     },
                   ),
                 ),
-                const SizedBox(width: 8),
+                AppSpacing.hSm,
                 FilledButton(
                   style: FilledButton.styleFrom(backgroundColor: const Color(0xFFC2410C)),
                   onPressed: () {
@@ -436,7 +437,7 @@ class _CardBodyState extends ConsumerState<_CardBody> {
                 ),
               ],
             ),
-            const SizedBox(height: 4),
+            AppSpacing.vXs,
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton(
@@ -485,7 +486,7 @@ class _CardBodyState extends ConsumerState<_CardBody> {
       content: Text('$prefix${_actionPastTense(s)}$matchedLine'),
       backgroundColor: devFakeLabel != null
           ? const Color(0xFF7C3AED)
-          : const Color(0xFF22C55E),
+          : AppColors.success,
     ),);
   }
 
@@ -508,7 +509,7 @@ class _CardBodyState extends ConsumerState<_CardBody> {
           confirmTitle: 'Check in?',
           confirmBody: 'Your location will be recorded and the clock starts.',
           confirmActionLabel: 'Check in',
-          confirmColor: const Color(0xFF22C55E),
+          confirmColor: AppColors.success,
         );
     Future<void> onCheckOut() => _geoAct(
           action: (fix) => notifier.checkOut(fix: fix),
@@ -652,7 +653,7 @@ class _ActionRow extends StatelessWidget {
         return _bigButton(
           label: 'Check in',
           icon: Icons.login,
-          color: const Color(0xFF22C55E),
+          color: AppColors.success,
           onTap: busy ? null : onCheckIn,
         );
       case AttendanceStatus.active:
@@ -664,7 +665,7 @@ class _ActionRow extends StatelessWidget {
               color: AppColors.arenaRed,
               onTap: busy ? null : onCheckOut,
             ),
-            const SizedBox(height: 8),
+            AppSpacing.vSm,
             Row(
               children: [
                 Expanded(
@@ -674,7 +675,7 @@ class _ActionRow extends StatelessWidget {
                     onTap: busy ? null : onBreakStart,
                   ),
                 ),
-                const SizedBox(width: 8),
+                AppSpacing.hSm,
                 Expanded(
                   child: _outlinedAction(
                     label: 'Away',
@@ -694,11 +695,11 @@ class _ActionRow extends StatelessWidget {
               child: _bigButton(
                 label: 'End break',
                 icon: Icons.play_arrow,
-                color: const Color(0xFF22C55E),
+                color: AppColors.success,
                 onTap: busy ? null : onBreakEnd,
               ),
             ),
-            const SizedBox(width: 8),
+            AppSpacing.hSm,
             Expanded(
               flex: 1,
               child: _outlinedAction(
@@ -717,11 +718,11 @@ class _ActionRow extends StatelessWidget {
               child: _bigButton(
                 label: "I'm back",
                 icon: Icons.play_arrow,
-                color: const Color(0xFF22C55E),
+                color: AppColors.success,
                 onTap: busy ? null : onComeBack,
               ),
             ),
-            const SizedBox(width: 8),
+            AppSpacing.hSm,
             Expanded(
               flex: 1,
               child: _outlinedAction(
@@ -803,14 +804,14 @@ class _NoLocationBanner extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(10, 8, 8, 8),
       decoration: BoxDecoration(
         color: const Color(0xFFFEF3C7),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFF59E0B), width: 1),
+        borderRadius: AppRadius.rSm,
+        border: Border.all(color: AppColors.warning, width: 1),
       ),
       child: Row(
         children: [
           const Icon(Icons.location_off_outlined,
               color: Color(0xFF92400E), size: 18,),
-          const SizedBox(width: 8),
+          AppSpacing.hSm,
           const Expanded(
             child: Text(
               'Location is off — events will be marked as Unmatched',
@@ -855,7 +856,7 @@ class _Skeleton extends StatelessWidget {
               height: 18,
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
-            const SizedBox(width: 12),
+            AppSpacing.hMd,
             Expanded(
               child: Text(
                 message ?? 'Loading attendance…',

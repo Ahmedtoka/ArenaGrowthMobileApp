@@ -1,4 +1,4 @@
-/// Plain-Dart models for the leave feature (no codegen).
+// Plain-Dart models for the leave feature (no codegen).
 
 class LeaveBalance {
   final int year;

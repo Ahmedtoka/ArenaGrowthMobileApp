@@ -3,7 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_dimens.dart';
 import '../../../core/utils/text_direction_util.dart';
+import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_states.dart';
+import '../../../core/widgets/status_pill.dart';
 import '../../../core/widgets/user_avatar.dart';
 import 'dashboard_providers.dart';
 
@@ -139,7 +143,7 @@ class _Chip extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
               color: active ? AppColors.arenaBlue : Colors.white,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: AppRadius.rLg,
               border: Border.all(
                   color: active ? AppColors.arenaBlue : AppColors.border,),
             ),
@@ -199,7 +203,7 @@ class _DashboardBody extends StatelessWidget {
           ],
         ),
         const _Hint('Act on these first — independent of the date filter.'),
-        const SizedBox(height: 8),
+        AppSpacing.vSm,
         _MiniRow(children: [
           _AttnTile(
             label: 'Overdue',
@@ -232,10 +236,10 @@ class _DashboardBody extends StatelessWidget {
         const _SectionTitle('In this period'),
         const _Hint('Counted by time: arrivals by creation date, '
             'done by completion date.'),
-        const SizedBox(height: 8),
+        AppSpacing.vSm,
         _FunnelCard(rows: const [
           _FunnelSpec('came_in', 'Came in', 'Created inside the selected window',
-              Color(0xFF2235FF), Icons.call_received,),
+              AppColors.arenaBlue, Icons.call_received,),
           _FunnelSpec('done', 'Done', 'Completed inside the window (by finish date)',
               Color(0xFF10B981), Icons.check_circle_outline,),
         ], funnel: funnel, lists: funnelLists,),
@@ -244,14 +248,14 @@ class _DashboardBody extends StatelessWidget {
         const SizedBox(height: 22),
         const _SectionTitle('Pipeline right now'),
         const _Hint('Your live backlog — independent of the date filter.'),
-        const SizedBox(height: 8),
+        AppSpacing.vSm,
         _MiniRow(children: [
           _MiniStat('This month', _int(totals['this_month'])),
           _MiniStat('All open now', _int(totals['all_open'])),
           if (activity != null)
             _MiniStat('Msgs today', _int(activity['messages_today'])),
         ],),
-        const SizedBox(height: 12),
+        AppSpacing.vMd,
         // "New" first, each with a one-line description.
         _FunnelCard(rows: const [
           _FunnelSpec('new', 'New', 'Assigned, nobody opened it yet',
@@ -260,11 +264,11 @@ class _DashboardBody extends StatelessWidget {
               'Opened but work hasn\'t begun', Color(0xFF8B5CF6),
               Icons.visibility_outlined,),
           _FunnelSpec('in_progress', 'In progress', 'Being worked on right now',
-              Color(0xFF2235FF), Icons.bolt_outlined,),
+              AppColors.arenaBlue, Icons.bolt_outlined,),
           _FunnelSpec('awaiting', 'Awaiting', 'Blocked — waiting on a reply',
-              Color(0xFFF59E0B), Icons.hourglass_bottom,),
+              AppColors.warning, Icons.hourglass_bottom,),
           _FunnelSpec('overdue', 'Overdue', 'Past its due date, still open',
-              Color(0xFFE63A2D), Icons.warning_amber_rounded,),
+              AppColors.arenaRed, Icons.warning_amber_rounded,),
         ], funnel: funnel, lists: funnelLists,),
 
         // ── Latest about me ─────────────────────────────
@@ -278,7 +282,7 @@ class _DashboardBody extends StatelessWidget {
             ],
           ),
           const _Hint('Your most recently changed tasks.'),
-          const SizedBox(height: 8),
+          AppSpacing.vSm,
           for (final t in myActivity.take(5))
             _ActivityRow(task: (t as Map).cast<String, dynamic>()),
         ],
@@ -290,7 +294,7 @@ class _DashboardBody extends StatelessWidget {
           const _Hint('Open / late / done-today per brand.'),
           const SizedBox(height: 6),
           _BrandsTotals(brands: brands),
-          const SizedBox(height: 8),
+          AppSpacing.vSm,
           for (final b in _list(brands['breakdown']))
             _BrandRow(brand: (b as Map).cast<String, dynamic>()),
         ],
@@ -299,7 +303,7 @@ class _DashboardBody extends StatelessWidget {
         if (people != null) ...[
           const SizedBox(height: 22),
           const _SectionTitle('Team'),
-          const SizedBox(height: 8),
+          AppSpacing.vSm,
           _MiniRow(children: [
             _MiniStat('People', _int(people['total'])),
             _MiniStat('Online', _int(people['online']),
@@ -307,7 +311,7 @@ class _DashboardBody extends StatelessWidget {
             _MiniStat('Offline', _int(people['offline'])),
           ],),
           if (online.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            AppSpacing.vMd,
             _OnlineStrip(users: online),
           ],
         ],
@@ -316,12 +320,12 @@ class _DashboardBody extends StatelessWidget {
         if (top.isNotEmpty) ...[
           const SizedBox(height: 22),
           const _SectionTitle('Top performers this week'),
-          const SizedBox(height: 8),
+          AppSpacing.vSm,
           for (final u in top)
             _PerformerRow(user: (u as Map).cast<String, dynamic>()),
         ],
 
-        const SizedBox(height: 16),
+        AppSpacing.vLg,
         Center(
           child: Text('Read-only · ${_roleLabel(role)}',
               style: const TextStyle(fontSize: 11, color: AppColors.ink3),),
@@ -358,13 +362,9 @@ class _Card extends StatelessWidget {
   final EdgeInsets padding;
   const _Card({required this.child, this.padding = const EdgeInsets.all(14)});
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) => AppCard(
         padding: padding,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
-        ),
+        margin: EdgeInsets.zero,
         child: child,
       );
 }
@@ -385,13 +385,13 @@ class _AttnTile extends StatelessWidget {
   });
   @override
   Widget build(BuildContext context) => InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadius.rMd,
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: AppRadius.rMd,
             border: Border.all(color: color.withValues(alpha: 0.30)),
           ),
           child: Column(
@@ -528,7 +528,7 @@ class _FunnelRow extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              AppSpacing.hSm,
               Text('$value',
                   style: TextStyle(
                       fontSize: 20,
@@ -602,16 +602,7 @@ class _Pill extends StatelessWidget {
   final Color color;
   const _Pill(this.text, this.color);
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(text,
-            style: TextStyle(
-                fontSize: 11, fontWeight: FontWeight.w700, color: color,),),
-      );
+  Widget build(BuildContext context) => StatusPill(text, color: color);
 }
 
 class _OnlineStrip extends StatelessWidget {
@@ -623,7 +614,7 @@ class _OnlineStrip extends StatelessWidget {
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           itemCount: users.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 12),
+          separatorBuilder: (_, __) => AppSpacing.hMd,
           itemBuilder: (_, i) {
             final u = (users[i] as Map).cast<String, dynamic>();
             return SizedBox(
@@ -710,7 +701,7 @@ class _ActivityRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadius.rMd,
         onTap: () => _openTask(context, task['id']),
         child: _Card(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
@@ -763,7 +754,7 @@ class _ActivityRow extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              AppSpacing.hSm,
               _Pill(_statusLabel(status), _statusColor(status)),
             ],
           ),
@@ -777,18 +768,9 @@ class _ErrorView extends StatelessWidget {
   final VoidCallback onRetry;
   const _ErrorView({required this.onRetry});
   @override
-  Widget build(BuildContext context) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.cloud_off, size: 40, color: AppColors.ink3),
-            const SizedBox(height: 12),
-            const Text('Could not load the dashboard.',
-                style: TextStyle(color: AppColors.ink2),),
-            const SizedBox(height: 12),
-            OutlinedButton(onPressed: onRetry, child: const Text('Retry')),
-          ],
-        ),
+  Widget build(BuildContext context) => AppErrorState(
+        text: 'Could not load the dashboard.',
+        onRetry: onRetry,
       );
 }
 
@@ -839,16 +821,10 @@ void _openTaskList(BuildContext context, String title, List items) {
           const Divider(height: 1),
           Expanded(
             child: items.isEmpty
-                ? const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(24),
-                      child: Text('Nothing here 🎉',
-                          style: TextStyle(color: AppColors.ink3),),
-                    ),
-                  )
+                ? const AppEmptyState(text: 'Nothing here 🎉')
                 : ListView.builder(
                     controller: scroll,
-                    padding: const EdgeInsets.all(12),
+                    padding: AppSpacing.card,
                     itemCount: items.length,
                     itemBuilder: (_, i) {
                       final t = (items[i] as Map).cast<String, dynamic>();
@@ -878,7 +854,7 @@ class _TaskListRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadius.rMd,
         onTap: onTap,
         child: _Card(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
@@ -912,7 +888,7 @@ class _TaskListRow extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              AppSpacing.hSm,
               _Pill(_statusLabel(status), _statusColor(status)),
             ],
           ),
@@ -947,7 +923,7 @@ String _statusLabel(String k) => switch (k) {
 Color _statusColor(String k) => switch (k) {
       'pending' => const Color(0xFF9CA3AF),
       'in_progress' => const Color(0xFF3B82F6),
-      'awaiting_clarification' => const Color(0xFFF59E0B),
+      'awaiting_clarification' => AppColors.warning,
       'resumed' => const Color(0xFF8B5CF6),
       'done' => const Color(0xFF10B981),
       'approved' => const Color(0xFF059669),
@@ -958,9 +934,9 @@ Color _statusColor(String k) => switch (k) {
 Color _priorityColor(String k) => switch (k) {
       '1' => const Color(0xFF9CA3AF),
       '2' => const Color(0xFF3B82F6),
-      '3' => const Color(0xFFF59E0B),
+      '3' => AppColors.warning,
       '4' => const Color(0xFFEA580C),
-      '5' || '6' => const Color(0xFFE63A2D),
+      '5' || '6' => AppColors.arenaRed,
       _ => AppColors.arenaBlue,
     };
 

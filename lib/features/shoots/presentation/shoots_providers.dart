@@ -60,8 +60,8 @@ Future<FormData> _shootForm(
     form.files.add(MapEntry(
       'attachments[]',
       await MultipartFile.fromFile(f.path,
-          filename: f.path.split(Platform.pathSeparator).last),
-    ));
+          filename: f.path.split(Platform.pathSeparator).last,),
+    ),);
   }
   return form;
 }

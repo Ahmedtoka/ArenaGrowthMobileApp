@@ -43,7 +43,7 @@ class StatusPill extends StatelessWidget {
           ],
           Text(label,
               style: TextStyle(
-                  fontSize: 11, fontWeight: FontWeight.w800, color: color)),
+                  fontSize: 11, fontWeight: FontWeight.w800, color: color,),),
         ],
       ),
     );
