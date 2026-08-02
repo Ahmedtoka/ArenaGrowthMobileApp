@@ -62,7 +62,7 @@ GoRouter appRouter(AppRouterRef ref) {
       // Still bootstrapping with no cached value — let the current route render.
       if (auth.isLoading && !auth.hasValue) return null;
 
-      final loggedIn = auth.value != null;
+      final loggedIn = auth.valueOrNull != null;
       final atLogin = state.matchedLocation == Routes.login;
 
       if (!loggedIn && !atLogin) return Routes.login;

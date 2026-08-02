@@ -21,7 +21,7 @@ plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
     // AGP 8.9.1 supports compileSdk 36 and androidx.core 1.17+.
     id("com.android.application") version "8.9.1" apply false
-    id("org.jetbrains.kotlin.android") version "1.9.25" apply false
+    id("org.jetbrains.kotlin.android") version "2.1.20" apply false
     // Firebase push notifications (Phase 3.J)
     id("com.google.gms.google-services") version "4.4.2" apply false
 }

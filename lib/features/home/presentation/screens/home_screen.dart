@@ -51,7 +51,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(authControllerProvider).value;
+    final user = ref.watch(authControllerProvider).valueOrNull;
     final inboxCount =
         ref.watch(actionCenterProvider).valueOrNull?.unread ?? 0;
 

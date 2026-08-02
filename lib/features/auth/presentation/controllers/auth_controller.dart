@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/providers/app_providers.dart';
@@ -33,7 +34,15 @@ class AuthController extends _$AuthController {
     final cached = await repo.getCachedUser();
 
     // Bootstrap push on app startup if a session is already restored.
-    bootstrapPush(ref.read(pushServiceProvider));
+    // Guarded: constructing PushService touches FirebaseMessaging.instance,
+    // which throws synchronously if Firebase failed to initialize (e.g. iOS
+    // build without GoogleService-Info.plist) — that must never fail the
+    // whole auth bootstrap and strand the app on the splash screen.
+    try {
+      bootstrapPush(ref.read(pushServiceProvider));
+    } catch (e) {
+      if (kDebugMode) debugPrint('[push] bootstrap unavailable: $e');
+    }
 
     // Fire-and-forget server refresh — if it fails (e.g. 401), clear token.
     repo.me().then((fresh) {
@@ -69,7 +78,11 @@ class AuthController extends _$AuthController {
       state = AsyncData(user);
       // Bootstrap push notifications in the background. Failures are
       // logged but never block the login flow.
-      bootstrapPush(ref.read(pushServiceProvider));
+      try {
+        bootstrapPush(ref.read(pushServiceProvider));
+      } catch (e) {
+        if (kDebugMode) debugPrint('[push] bootstrap unavailable: $e');
+      }
       return true;
     } catch (e, st) {
       state = AsyncError(e, st);

@@ -185,10 +185,11 @@ flutter:
 # ───────────────────────────────────────────────────────────────
 flutter_launcher_icons:
   android: true
-  # iOS turned off — the iOS project scaffold isn't present on this
-  # Windows workstation (no Xcode), and the AppIcon.appiconset path
-  # crashes the generator. Re-enable once an iOS project exists.
-  ios: false
+  ios: true
+  # iOS icons cannot be transparent — flatten onto the same royal-blue
+  # background the Android adaptive icon uses.
+  remove_alpha_ios: true
+  background_color_ios: "#2417C7"
   image_path: "assets/images/Icon.png"
   min_sdk_android: 24
   # Adaptive icon: royal-blue background matching the Arena mark.
