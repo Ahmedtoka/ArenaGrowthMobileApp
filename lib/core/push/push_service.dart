@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../constants/api_constants.dart';
@@ -82,7 +81,12 @@ class PushService {
           );
 
       // 3. Wire up listeners ONCE.
-      _messaging.onTokenRefresh.listen(_registerToken);
+      _messaging.onTokenRefresh.listen((token) {
+        _registerToken(token).catchError((Object e) {
+          // ignore: avoid_print
+          print('[push] onTokenRefresh registration failed: $e');
+        });
+      });
       FirebaseMessaging.onMessage.listen(_onForeground);
       FirebaseMessaging.onMessageOpenedApp.listen(_handleTap);
 
@@ -103,21 +107,64 @@ class PushService {
   /// Public hook the auth flow calls after login. Forces the current FCM
   /// token to be re-uploaded to the backend so a fresh device→user mapping
   /// exists for push delivery.
+  ///
+  /// On iOS, `getToken()` needs the native APNs device token to already be
+  /// set on the FirebaseMessaging instance — that token only arrives after
+  /// the OS finishes the APNs registration handshake following the
+  /// permission prompt, which is asynchronous and not instant. Calling
+  /// `getToken()` before it lands throws. We wait for it (with a timeout)
+  /// and retry the whole attempt a few times with backoff, since the same
+  /// race can also show up as a transient network failure posting to our
+  /// backend.
   Future<void> registerCurrentToken() async {
-    try {
-      final token = await _messaging.getToken();
-      if (token != null) {
+    const maxAttempts = 3;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        if (Platform.isIOS) {
+          final apnsToken = await _waitForApnsToken();
+          if (apnsToken == null) {
+            // ignore: avoid_print
+            print('[push] iOS APNs token not ready (attempt $attempt/$maxAttempts)');
+            throw StateError('APNs token not available');
+          }
+        }
+
+        final token = await _messaging.getToken();
+        if (token == null) {
+          // ignore: avoid_print
+          print('[push] FirebaseMessaging.getToken() returned null (attempt $attempt/$maxAttempts)');
+          throw StateError('FCM token not available');
+        }
+
         // ignore: avoid_print
         print('[push] (re)registering FCM token (len=${token.length})');
         await _registerToken(token);
-      } else {
+        return;
+      } catch (e) {
         // ignore: avoid_print
-        print('[push] FirebaseMessaging.getToken() returned null');
+        print('[push] registerCurrentToken failed (attempt $attempt/$maxAttempts): $e');
+        if (attempt == maxAttempts) return;
+        await Future.delayed(Duration(seconds: attempt * 2));
       }
-    } catch (e) {
-      // ignore: avoid_print
-      print('[push] registerCurrentToken failed: $e');
     }
+  }
+
+  /// Polls for the native APNs token, which FirebaseMessaging needs before
+  /// `getToken()` can succeed on iOS. No-op wait on Android (returns
+  /// immediately via the null check at the call site never running there).
+  Future<String?> _waitForApnsToken({
+    Duration timeout = const Duration(seconds: 10),
+  }) async {
+    final existing = await _messaging.getAPNSToken();
+    if (existing != null) return existing;
+
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      final token = await _messaging.getAPNSToken();
+      if (token != null) return token;
+    }
+    return null;
   }
 
   void _handleTap(RemoteMessage msg) {
@@ -142,20 +189,19 @@ class PushService {
     appNavigator?.go('/');
   }
 
+  /// Posts the token to the backend. Errors are left to propagate so callers
+  /// (registerCurrentToken's retry loop, or the onTokenRefresh listener) can
+  /// log/retry instead of the failure being silently lost.
   Future<void> _registerToken(String token) async {
-    try {
-      final platform = Platform.isIOS ? 'ios' : 'android';
-      await _client.post(
-        ApiConstants.fcmToken,
-        data: {
-          'token': token,
-          'platform': platform,
-          'device_label': Platform.isIOS ? 'iOS · Arena OS' : 'Android · Arena OS',
-        },
-      );
-    } catch (e) {
-      if (kDebugMode) debugPrint('[push] failed to register token: $e');
-    }
+    final platform = Platform.isIOS ? 'ios' : 'android';
+    await _client.post(
+      ApiConstants.fcmToken,
+      data: {
+        'token': token,
+        'platform': platform,
+        'device_label': Platform.isIOS ? 'iOS · Arena OS' : 'Android · Arena OS',
+      },
+    );
   }
 
   Future<void> _onForeground(RemoteMessage msg) async {
