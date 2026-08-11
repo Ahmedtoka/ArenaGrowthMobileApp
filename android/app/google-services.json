@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "542008318422",
-    "project_id": "arena-os-125a5",
-    "storage_bucket": "arena-os-125a5.firebasestorage.app"
+    "project_number": "706510074344",
+    "project_id": "arena-erp-b920f",
+    "storage_bucket": "arena-erp-b920f.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:542008318422:android:89befc5a46c0009ca82c77",
+        "mobilesdk_app_id": "1:706510074344:android:89f5bb89cc2f3e002ef45d",
         "android_client_info": {
           "package_name": "com.arena.os"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDw_WTi2jx9Mj-U8btQns-qBz5tHlPeH-E"
+          "current_key": "AIzaSyBSkDl919t6pfpLYOroRjAWN9mBNzVI2Ug"
         }
       ],
       "services": {

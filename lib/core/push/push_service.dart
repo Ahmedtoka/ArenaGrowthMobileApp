@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -50,8 +51,16 @@ class PushService {
 
       // 2. Local notification channels for in-foreground heads-up.
       const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+      // iOS: don't ask for permission here — FirebaseMessaging.requestPermission
+      // above already prompted, and both go through the same iOS authorization
+      // store, so asking twice would just be a redundant no-op prompt.
+      const iosInit = DarwinInitializationSettings(
+        requestAlertPermission: false,
+        requestBadgePermission: false,
+        requestSoundPermission: false,
+      );
       await _local.initialize(
-        const InitializationSettings(android: androidInit),
+        const InitializationSettings(android: androidInit, iOS: iosInit),
         onDidReceiveNotificationResponse: (resp) {
           final payload = resp.payload;
           if (payload == null || payload.isEmpty) return;
@@ -135,12 +144,13 @@ class PushService {
 
   Future<void> _registerToken(String token) async {
     try {
+      final platform = Platform.isIOS ? 'ios' : 'android';
       await _client.post(
         ApiConstants.fcmToken,
         data: {
           'token': token,
-          'platform': 'android',
-          'device_label': 'Android · Arena OS',
+          'platform': platform,
+          'device_label': Platform.isIOS ? 'iOS · Arena OS' : 'Android · Arena OS',
         },
       );
     } catch (e) {
@@ -190,6 +200,11 @@ class PushService {
           'Messages',
           importance: Importance.high,
           priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
         ),
       ),
       payload: route,
