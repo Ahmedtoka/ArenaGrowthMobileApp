@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:dart_pusher_channels/dart_pusher_channels.dart';
 import 'package:flutter/foundation.dart';
@@ -20,6 +21,27 @@ class ReverbClient {
   // Every group we've been asked to subscribe to — survives socket drops so we
   // can re-subscribe them all when the connection is (re)established.
   final Set<int> _subscribedGroups = {};
+  // Channels whose _bindChannel() is mid-flight. _bindChannel awaits the token
+  // BEFORE it registers in _channels, so two callers (bootstrap + the chat
+  // screen, or bootstrap running twice) both used to sail past the
+  // `_channels.containsKey` guard and bind the same channel twice. Two
+  // overlapping subscribe() calls make the library discard the FIRST one's
+  // in-flight auth (see _trySubscribe) — pure waste at best, a lost
+  // subscription at worst.
+  final Set<String> _binding = {};
+  // Channels Pusher has actually ACKed with pusher:subscription_succeeded.
+  // This is the only trustworthy "am I really subscribed?" signal: the
+  // library's own channel status flips to pendingSubscription on every
+  // subscribe() call, so it can't distinguish healthy from stuck.
+  final Set<String> _subscribedChannels = {};
+  // Channels that were confirmed subscribed at some point. Used to tell a
+  // FIRST subscription (no gap to fill) from a RE-subscription after the
+  // channel silently died (gap → tell listeners to refetch).
+  final Set<String> _everSubscribedChannels = {};
+  // When we last sent a subscribe for a channel. The auth round-trip to
+  // /broadcasting/auth takes seconds on this backend; re-asserting faster
+  // than that cancels the in-flight attempt and the channel never settles.
+  final Map<String, DateTime> _lastSubscribeAttempt = {};
   bool _connecting = false;
   bool _connected = false;
   bool _everConnected = false;
@@ -111,10 +133,17 @@ class ReverbClient {
     }
     _channelSubs.clear();
     _channels.clear();
+    _subscribedChannels.clear();
+    _lastSubscribeAttempt.clear();
     _client = PusherChannelsClient.websocket(
       options: options,
       connectionErrorHandler: (e, st, refresh) {
         _connected = false;
+        // The socket is gone, so every server-side subscription died with it.
+        // Drop our ACK bookkeeping so the reconciler re-subscribes (and so a
+        // recovered channel is correctly seen as a RE-subscription → gap fill).
+        _subscribedChannels.clear();
+        _lastSubscribeAttempt.clear();
 
         // Log at most once every ~5s so a downed server (common in local
         // dev — no Reverb running) doesn't bury the console.
@@ -143,6 +172,28 @@ class ReverbClient {
         });
       },
     );
+
+    // A connection-level `pusher:error` is the ONLY thing Pusher sends back
+    // when a subscribe carries a bad auth signature — and the library drops
+    // it on the floor: it flips an internal `gotPusherError` lifecycle state
+    // that NOTHING in the package reads, with no error handler and no log.
+    // The result is a subscribe that is answered with total silence. This
+    // listener is the only way to see it.
+    _client!.pusherErrorEventStream.listen((event) {
+      // ignore: avoid_print
+      print('[Reverb] 🛑 PUSHER ERROR: ${event.rootObject}');
+    });
+
+    // Every raw frame from the server, minus the ping/pong keepalive noise.
+    // Shows exactly what Pusher does (or doesn't) reply to a subscribe.
+    if (kDebugMode) {
+      _client!.eventStream.listen((event) {
+        final name = '${event.rootObject['event'] ?? ''}';
+        if (name.contains('ping') || name.contains('pong')) return;
+        // ignore: avoid_print
+        print('[Reverb] ⟵ $name ${event.rootObject['channel'] ?? ''}');
+      });
+    }
 
     _client!.onConnectionEstablished.listen((_) {
       final wasReconnect = _everConnected;
@@ -186,7 +237,11 @@ class ReverbClient {
     if (_client == null) return;
 
     final channelName = 'private-brand-group.$groupId';
-    if (_channels.containsKey(channelName)) return; // already bound
+    // `_binding` closes the async gap: without it a second caller arriving
+    // while the first is still awaiting its token binds the channel twice.
+    if (_channels.containsKey(channelName) || _binding.contains(channelName)) {
+      return; // already bound / binding
+    }
 
     await _bindChannel(channelName);
   }
@@ -202,6 +257,8 @@ class ReverbClient {
     }
     _channels.clear();
     _channelSubs.clear();
+    _subscribedChannels.clear();
+    _lastSubscribeAttempt.clear();
     for (final id in _subscribedGroups) {
       _bindChannel('private-brand-group.$id').catchError((_) {});
     }
@@ -228,8 +285,9 @@ class ReverbClient {
   }
 
   /// For every group we SHOULD be subscribed to: if we never created a channel
-  /// (an earlier subscribe was aborted) → create it; if we have one → re-assert
-  /// the subscription (a no-op when already subscribed, a recovery when not).
+  /// (an earlier subscribe was aborted) → create it; if we have one that Pusher
+  /// has NOT ACKed → re-assert it, rate-limited. Channels with a live ACK are
+  /// left untouched.
   void _reconcile() {
     if (_client == null) return;
     if (!_connected) {
@@ -252,19 +310,71 @@ class ReverbClient {
       final name = 'private-brand-group.$id';
       final channel = _channels[name];
       if (channel == null) {
-        _bindChannel(name).catchError((_) {});
-      } else {
-        try {
-          channel.subscribeIfNotUnsubscribed();
-        } catch (_) {/* ignore */}
+        if (!_binding.contains(name)) {
+          _bindChannel(name).catchError((_) {});
+        }
+        continue;
       }
+      // Pusher has ACKed this one — leave it ALONE. Re-asserting a healthy
+      // subscription every 6s used to fire a /broadcasting/auth POST per
+      // channel per tick (20+/min/device against a backend answering in ~5s)
+      // and, worse, each new subscribe() invalidates the previous one's
+      // in-flight auth inside the library — so a slow auth response could be
+      // cancelled forever and the channel would never subscribe at all. That
+      // is silent: no error, no event, just a chat that never updates.
+      if (_subscribedChannels.contains(name)) continue;
+
+      // Unconfirmed: retry, but no faster than the auth round-trip.
+      final last = _lastSubscribeAttempt[name];
+      if (last != null &&
+          DateTime.now().difference(last) < const Duration(seconds: 15)) {
+        continue;
+      }
+      // ignore: avoid_print
+      print('[Reverb] ⚠️ $name not confirmed subscribed — re-asserting');
+      _trySubscribe(channel, name);
+    }
+  }
+
+  /// Sends a subscribe for [channel], guarding the one condition the library
+  /// swallows without a trace: no socket id yet (it returns from
+  /// `setAuthKeyFromDelegate` before even calling the auth endpoint, so the
+  /// channel sits idle forever and the logs look identical to a healthy one).
+  void _trySubscribe(PrivateChannel channel, String channelName) {
+    final socketId = _client?.socketId;
+    if (socketId == null) {
+      // ignore: avoid_print
+      print('[Reverb] ⏳ no socketId yet — deferring subscribe for $channelName');
+      return;
+    }
+    _lastSubscribeAttempt[channelName] = DateTime.now();
+    // ignore: avoid_print
+    print('[Reverb] → subscribe $channelName (socket=$socketId)');
+    try {
+      channel.subscribeIfNotUnsubscribed();
+    } catch (e) {
+      // ignore: avoid_print
+      print('[Reverb] subscribe threw for $channelName: $e');
     }
   }
 
   Future<void> _bindChannel(String channelName) async {
-    if (_client == null || _channels.containsKey(channelName)) return;
+    if (_client == null ||
+        _channels.containsKey(channelName) ||
+        _binding.contains(channelName)) {
+      return;
+    }
+    _binding.add(channelName);
+    try {
+      await _doBindChannel(channelName);
+    } finally {
+      _binding.remove(channelName);
+    }
+  }
 
+  Future<void> _doBindChannel(String channelName) async {
     final token = await _storage.getToken() ?? '';
+    if (_client == null || _channels.containsKey(channelName)) return;
     const apiBase = Env.apiBaseUrl;
     final hostBase = apiBase.endsWith('/api')
         ? apiBase.substring(0, apiBase.length - 4)
@@ -283,14 +393,51 @@ class ReverbClient {
           'Authorization': 'Bearer $token',
           'Accept': 'application/json',
         },
+        // Same as the library's default parser, plus a log line: this is the
+        // ONLY place we can see the auth endpoint's actual response, and
+        // "did /broadcasting/auth answer, and with what?" is the first
+        // question whenever realtime is silent.
+        parser: (response) {
+          final decoded = jsonDecode(response.body);
+          final auth = decoded is Map ? decoded['auth'] : null;
+          if (auth is! String) {
+            throw StateError(
+              'auth endpoint returned no "auth" key: ${response.body}',
+            );
+          }
+          // Laravel returns "<app_key>:<hmac>". The app key it signs with
+          // comes from the SERVER's .env; the key we opened the socket with
+          // comes from --dart-define. When those disagree, /broadcasting/auth
+          // still answers 200 — but Pusher rejects the subscribe as an
+          // invalid signature and (see pusherErrorEventStream above) the
+          // failure is otherwise completely invisible.
+          final signingKey = auth.split(':').first;
+          // ignore: avoid_print
+          print('[Reverb] auth ${response.statusCode} for $channelName '
+              '(signed by key=$signingKey)');
+          if (signingKey != Env.reverbAppKey) {
+            // ignore: avoid_print
+            print('[Reverb] 🛑 APP KEY MISMATCH — server signs with '
+                '"$signingKey" but this build connected with '
+                '"${Env.reverbAppKey}". Every subscribe will be rejected. '
+                'Fix the backend .env (PUSHER_APP_KEY/SECRET) or rebuild the '
+                'app with --dart-define=REVERB_APP_KEY=$signingKey');
+          }
+          return PrivateChannelAuthorizationData(authKey: auth);
+        },
         // WITHOUT this, a rejected /broadcasting/auth (expired token, 403 from
         // channels.php, HTML error page) throws inside the library and is
         // swallowed — the channel silently never subscribes and the logs look
         // IDENTICAL to a healthy-but-quiet chat. This is the single most
         // common cause of "connected, but no messages arrive".
         onAuthFailed: (exception, trace) {
+          // PusherChannelsException has no toString override — printing it
+          // raw gives "Instance of '...'", which hides the response body.
+          final detail = exception is PusherChannelsException
+              ? exception.message
+              : '$exception';
           // ignore: avoid_print
-          print('[Reverb] ❌ AUTH FAILED for $channelName: $exception');
+          print('[Reverb] ❌ AUTH FAILED for $channelName: $detail');
         },
       ),
     );
@@ -306,7 +453,23 @@ class ReverbClient {
         if (name.contains('subscription_succeeded')) {
           // ignore: avoid_print
           print('[Reverb] ✅ SUBSCRIBED to $channelName');
+          // Was this channel confirmed before and then lost? Then we were
+          // deaf for a while and Pusher replays nothing — tell the open chat
+          // and the chats list to refetch. This is what removes the "I have
+          // to leave the chat and come back to see the message" step.
+          final recovered = _everSubscribedChannels.contains(channelName) &&
+              !_subscribedChannels.contains(channelName);
+          _subscribedChannels.add(channelName);
+          _everSubscribedChannels.add(channelName);
+          if (recovered) {
+            _eventController.add(ReverbEvent(
+              channelName: channelName,
+              eventName: '__reconnected',
+              rawData: '',
+            ),);
+          }
         } else if (name.contains('subscription_error')) {
+          _subscribedChannels.remove(channelName);
           // ignore: avoid_print
           print('[Reverb] ❌ SUBSCRIPTION ERROR on $channelName: ${event.data}');
         } else if (name.startsWith('pusher:') || name.startsWith('pusher_internal:')) {
@@ -347,11 +510,11 @@ class ReverbClient {
       }
     }
 
-    channel.subscribeIfNotUnsubscribed();
-    // ignore: avoid_print
-    print('[Reverb] subscribeIfNotUnsubscribed() called for $channelName');
+    // Register BEFORE subscribing so the reconciler sees this channel as
+    // bound (and doesn't bind a second one) the moment it ticks.
     _channels[channelName] = channel;
     _channelSubs[channelName] = subs;
+    _trySubscribe(channel, channelName);
   }
 
   Future<void> unsubscribeFromBrandGroup(int groupId) async {
@@ -361,6 +524,9 @@ class ReverbClient {
       await s.cancel();
     }
     final channel = _channels.remove(channelName);
+    _subscribedChannels.remove(channelName);
+    _everSubscribedChannels.remove(channelName);
+    _lastSubscribeAttempt.remove(channelName);
     channel?.unsubscribe();
     if (kDebugMode) debugPrint('[Reverb] unsubscribed: $channelName');
   }
@@ -375,6 +541,10 @@ class ReverbClient {
     }
     _channelSubs.clear();
     _channels.clear();
+    _binding.clear();
+    _subscribedChannels.clear();
+    _everSubscribedChannels.clear();
+    _lastSubscribeAttempt.clear();
     _client?.disconnect();
     _connected = false;
   }
