@@ -283,11 +283,45 @@ class ReverbClient {
           'Authorization': 'Bearer $token',
           'Accept': 'application/json',
         },
+        // WITHOUT this, a rejected /broadcasting/auth (expired token, 403 from
+        // channels.php, HTML error page) throws inside the library and is
+        // swallowed — the channel silently never subscribes and the logs look
+        // IDENTICAL to a healthy-but-quiet chat. This is the single most
+        // common cause of "connected, but no messages arrive".
+        onAuthFailed: (exception, trace) {
+          // ignore: avoid_print
+          print('[Reverb] ❌ AUTH FAILED for $channelName: $exception');
+        },
       ),
     );
 
     // Bind to the events we care about and forward them.
     final subs = <StreamSubscription>[];
+
+    // Subscription lifecycle — proves whether Reverb actually ACCEPTED the
+    // subscribe, as opposed to us merely having sent one.
+    try {
+      subs.add(channel.bindToAll().listen((event) {
+        final name = event.name;
+        if (name.contains('subscription_succeeded')) {
+          // ignore: avoid_print
+          print('[Reverb] ✅ SUBSCRIBED to $channelName');
+        } else if (name.contains('subscription_error')) {
+          // ignore: avoid_print
+          print('[Reverb] ❌ SUBSCRIPTION ERROR on $channelName: ${event.data}');
+        } else if (name.startsWith('pusher:') || name.startsWith('pusher_internal:')) {
+          // protocol chatter (ping/pong) — ignore
+        } else {
+          // Any application event, including ones we don't explicitly bind.
+          // If a name shows up here that we never forward, that's the bug.
+          // ignore: avoid_print
+          print('[Reverb] 👀 event "$name" on $channelName');
+        }
+      }),);
+    } catch (e) {
+      // ignore: avoid_print
+      print('[Reverb] bindToAll threw: $e');
+    }
 
     for (final evt in const ['MessageSent', 'TypingChanged', 'MessageDeleted', 'MessageUpdated']) {
       try {
