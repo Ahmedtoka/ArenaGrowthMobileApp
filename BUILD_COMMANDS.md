@@ -56,18 +56,23 @@ cd D:\XamppPhp8.2\htdocs\arena-team-app
 flutter clean
 flutter pub get
 
-flutter build apk --release `
-  --dart-define=API_BASE_URL=https://erp.arenahere.com/api `
-  --dart-define=REVERB_HOST=erp.arenahere.com `
-  --dart-define=REVERB_PORT=443 `
-  --dart-define=REVERB_SCHEME=wss `
-  --dart-define=REVERB_APP_KEY=ef15ebb76813e080d3d380475f7f4de586f9a9aab772c405 `
-  --dart-define=APP_ENV=production
+flutter build apk --release --dart-define-from-file=live.json
 ```
+
+All live values (API host, broker host, app key) come from
+`live.json` — the single source of truth. Do NOT pass `--dart-define`
+flags by hand: `REVERB_APP_KEY` must match the key the SERVER signs
+`/broadcasting/auth` with, and when the two drift apart nothing errors.
+`/broadcasting/auth` still returns 200, the subscribe is rejected as an
+invalid signature, and the chat simply never updates.
+
+The dashboard's `VITE_REVERB_APP_KEY` / `VITE_REVERB_HOST` must point
+at that same broker, or web and mobile end up on different ones.
 
 APK lands at `build/app/outputs/flutter-apk/app-release.apk`.
 
-Note: WebSocket realtime only works once Cloudways has the Nginx
-`/app` reverse proxy in place. Until then, FCM push covers
-notifications but typing indicator / instant message delivery require
-a hard refresh.
+Note: the Cloudways Nginx `/app` reverse proxy is now in place —
+`wss://erp.arenahere.com/app/<reverb-key>` completes a WebSocket
+handshake and answers `X-Powered-By: Laravel Reverb`. Either broker
+works; what matters is that the app, the dashboard and the server all
+name the SAME one.

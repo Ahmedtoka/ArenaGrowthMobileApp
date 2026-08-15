@@ -1,10 +1,12 @@
 {
-  "_comment": "Sprint N — live build configuration. Pass to flutter via `--dart-define-from-file=live.json` so the APK targets the production Laravel server + Reverb. Keep all keys aligned with lib/core/config/env.dart.",
+  "_comment": "SINGLE SOURCE OF TRUTH for live builds. Pass via `--dart-define-from-file=live.json` (all scripts/build-prod.* do). Keys must match lib/core/config/env.dart.",
+
+  "_realtime": "REVERB_APP_KEY must equal the key the SERVER signs /broadcasting/auth with — i.e. the key of whichever broadcaster BROADCAST_CONNECTION selects in the live .env. Server on `pusher` => PUSHER_APP_KEY + ws-<cluster>.pusher.com (current). Server on `reverb` => REVERB_APP_KEY + erp.arenahere.com. A mismatch is INVISIBLE at runtime: /broadcasting/auth still answers 200, the subscribe is rejected as an invalid signature, and no message or typing event ever arrives.",
 
   "API_BASE_URL": "https://erp.arenahere.com/api",
-  "REVERB_HOST": "erp.arenahere.com",
+  "REVERB_HOST": "ws-eu.pusher.com",
   "REVERB_PORT": 443,
   "REVERB_SCHEME": "wss",
-  "REVERB_APP_KEY": "ef15ebb76813e080d3d380475f7f4de586f9a9aab772c405",
+  "REVERB_APP_KEY": "b587dc29173ecaf4f770",
   "APP_ENV": "production"
 }

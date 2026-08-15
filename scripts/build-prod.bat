@@ -3,21 +3,16 @@ REM ============================================================
 REM  Arena OS — build a PRODUCTION release APK
 REM  Points the app at the live server (erp.arenahere.com).
 REM
-REM  The default build points at the local emulator
-REM  (http://10.0.2.2:8000) — a real phone can't reach that, which
-REM  is exactly why login showed "connection timeout". These
-REM  --dart-define values override that with the live host.
+REM  All values come from live.json so there is exactly ONE place
+REM  to change them. Hardcoding --dart-define here is what let the
+REM  app and the server drift onto different brokers (app on Pusher,
+REM  server signing with the Reverb key) — a failure that produces
+REM  NO error, just a chat that never updates.
 REM
 REM  Run from the arena-team-app folder:  scripts\build-prod.bat
 REM ============================================================
 
-flutter build apk --release ^
-  --dart-define=APP_ENV=production ^
-  --dart-define=API_BASE_URL=https://erp.arenahere.com/api ^
-  --dart-define=REVERB_HOST=erp.arenahere.com ^
-  --dart-define=REVERB_PORT=443 ^
-  --dart-define=REVERB_SCHEME=wss ^
-  --dart-define=REVERB_APP_KEY=ef15ebb76813e080d3d380475f7f4de586f9a9aab772c405
+flutter build apk --release --dart-define-from-file=live.json
 
 echo.
 echo ============================================================
